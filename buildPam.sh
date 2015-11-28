@@ -1,7 +1,7 @@
 #!/bin/bash
 
-gcc -fPIC -fno-stack-protector -c src/mypam.c
+gcc -fPIC -fno-stack-protector -c src/pam_ipahbac.c
 
-sudo ld -x --shared -o /lib/security/mypam.so mypam.o
+sudo ld -x --shared -o /lib/security/pam_ipahbac.so pam_ipahbac.o
 
-rm mypam.o
+rm pam_ipahbac.o
