@@ -28,6 +28,7 @@ AM_PROG_LIBTOOL
 AC_CHECK_LIB(pam, pam_start)
 
 # Checks for header files.
+AC_CHECK_HEADERS([ldap.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 
