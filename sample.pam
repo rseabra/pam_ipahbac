@@ -1,0 +1,6 @@
+# TODO: fix sample
+#%PAM-1.0
+auth       required     /lib/security/pam_ipahbac.so debug creds=/etc/ldap.conf
+account    required     /lib/security/pam_ipahbac.so debug creds=/etc/ldap.conf
+password   required     /lib/security/pam_ipahbac.so debug creds=/etc/ldap.conf
+session    required     /lib/security/pam_ipahbac.so debug creds=/etc/ldap.conf
