@@ -16,7 +16,6 @@ AC_CONFIG_MACRO_DIR([m4])
 
 # Enable "automake" to simplify creating makefiles:
 AM_INIT_AUTOMAKE
-AC_CONFIG_FILES([Makefile])
 
 # Checks for programs, e.g., AC_PROG_CC
 AC_PROG_CC
@@ -35,7 +34,12 @@ AC_CHECK_LIB(pam, pam_start)
 # Checks for library functions.
 
 # Choose what to build
-AC_ARG_WITH([solaris], AS_HELP_STRING([--without-solaris], [Build against Solaris]))
+AC_ARG_ENABLE([pamdir], [AS_HELP_STRING([--enable-pamdir],
+              [Location to install the pam module ($libdir/security)])],
+              [pamdir=$enableval], [pamdir=$libdir/security])
+AC_SUBST(pamdir)
+
+AC_ARG_WITH([solaris], AS_HELP_STRING([--with-solaris], [Build against Solaris]))
 
 if test "x$with_solaris" != "xno"; then
 dnl	PKG_CHECK_MODULES(FRAMEWORKD_GLIB, libframeworkd-glib, [],
@@ -45,7 +49,7 @@ dnl		)
 	AC_DEFINE([SOLARIS_BUILD], [1], [Whether to build against Solaris])
 fi
 
-AC_ARG_WITH([aix], AS_HELP_STRING([--without-aix], [Build against AIX]))
+AC_ARG_WITH([aix], AS_HELP_STRING([--with-aix], [Build against AIX]))
 
 if test "x$with_aix" != "xno"; then
 dnl	PKG_CHECK_MODULES(FRAMEWORKD_GLIB, libframeworkd-glib, [],

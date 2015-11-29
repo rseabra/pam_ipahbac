@@ -1,9 +1,9 @@
 MAINTAINERCLEANFILES = Makefile.in
 
-bin_PROGRAMS: test
+bin_PROGRAMS: ipahbac_test
 
-test_SOURCES = test.c
-test_LDFLAGS = -lpam -lpam_misc
+ipahbac_test_SOURCES = test.c
+ipahbac_test_LDFLAGS = -lpam -lpam_misc
 
 
 moduledir = @pamdir@
