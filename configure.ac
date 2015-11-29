@@ -1,4 +1,7 @@
 # Initialize autoconf.
+AC_COPYRIGHT([
+See the included file: COPYING for copyright information.
+])
 AC_INIT([pam_ipahbac], [0.0.1], [rms@1407.org],
         [pam_ipahbac], [https://github.com/rseabra/pam_ipahbac/])
 # Force autoconf to be at least this version number:
@@ -8,7 +11,7 @@ AC_CONFIG_SRCDIR([src/pam_ipahbac.c])
 # Put configuration results here, so we can easily #include them:
 AC_CONFIG_HEADERS([config.h])
 # Put autotools auxiliary files in subdirectories to reduce clutter:
-AC_CONFIG_AUX_DIR([build-aux])
+AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR([m4])
 
 # Enable "automake" to simplify creating makefiles:
@@ -16,8 +19,14 @@ AM_INIT_AUTOMAKE
 AC_CONFIG_FILES([Makefile])
 
 # Checks for programs, e.g., AC_PROG_CC
+AC_PROG_CC
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
+AM_PROG_LIBTOOL
 
 # Checks for libraries.
+AC_CHECK_LIB(pam, pam_start)
 
 # Checks for header files.
 
@@ -25,8 +34,36 @@ AC_CONFIG_FILES([Makefile])
 
 # Checks for library functions.
 
+# Choose what to build
+AC_ARG_WITH([solaris], AS_HELP_STRING([--without-solaris], [Build against Solaris]))
+
+if test "x$with_solaris" != "xno"; then
+dnl	PKG_CHECK_MODULES(FRAMEWORKD_GLIB, libframeworkd-glib, [],
+dnl		[AC_MSG_FAILURE([libframeworkd-glib not found])]
+dnl		)
+
+	AC_DEFINE([SOLARIS_BUILD], [1], [Whether to build against Solaris])
+fi
+
+AC_ARG_WITH([aix], AS_HELP_STRING([--without-aix], [Build against AIX]))
+
+if test "x$with_aix" != "xno"; then
+dnl	PKG_CHECK_MODULES(FRAMEWORKD_GLIB, libframeworkd-glib, [],
+dnl		[AC_MSG_FAILURE([libframeworkd-glib not found])]
+dnl		)
+
+	AC_DEFINE([AIX_BUILD], [1], [Whether to build against AIX])
+fi
+
+LIBDIR=`eval echo $LIBDIR`
+AC_SUBST([LIBDIR])
+
+AC_SUBST([VERSION])
+
 # Do final output.
-AC_OUTPUT([
+AC_CONFIG_FILES([
 Makefile
 src/Makefile
 ])
+
+AC_OUTPUT
