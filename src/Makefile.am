@@ -12,7 +12,7 @@ module_LTLIBRARIES = pam_ipahbac.la
 
 pam_ipahbac_la_SOURCES = pam_ipahbac.c pam_ipahbac.h
 pam_ipahbac_la_CFLAGS = -fPIC -fno-stack-protector -Wall -D HBAC_CONFIG=@hbaccfg@
-pam_ipahbac_la_LDFLAGS = -module -avoid-version -shared -export-dynamic -lpam --as-needed --disable-static --shared
+pam_ipahbac_la_LDFLAGS = -module -avoid-version -shared -export-dynamic -lpam --as-needed --disable-static --shared -llber -lldap
 
 install-data-hook:
 	rm -f $(DESTDIR)$(pamdir)/pam_ipahback.la
