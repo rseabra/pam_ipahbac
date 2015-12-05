@@ -40,6 +40,13 @@ AC_ARG_ENABLE([pamdir], [AS_HELP_STRING([--enable-pamdir],
               [pamdir=$enableval], [pamdir=$libdir/security])
 AC_SUBST(pamdir)
 
+
+dnl make variables chenge with this flag?
+case "$host" in
+	sparc-* | sparc64-*)
+		LIBS="$LIBS -lresolv";;
+esac
+
 AC_ARG_WITH([solaris], AS_HELP_STRING([--with-solaris], [Build against Solaris]))
 
 if test "x$with_solaris" != "xno"; then
@@ -59,6 +66,11 @@ dnl		)
 
 	AC_DEFINE([AIX_BUILD], [1], [Whether to build against AIX])
 fi
+
+AC_ARG_ENABLE([hbaccfg], [AS_HELP_STRING([--enable-hbaccfg],
+              [Location to install the pam module ($sysconfdir/ipa-hbac.conf)])],
+              [hbaccfg=$enableval], [hbaccfg=$sysconfdir/ipa-hbac.conf])
+AC_SUBST(hbaccfg)
 
 LIBDIR=`eval echo $LIBDIR`
 AC_SUBST([LIBDIR])

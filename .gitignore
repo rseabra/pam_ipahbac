@@ -22,4 +22,6 @@ src/Makefile.in
 src/pam_ipahbac.la
 src/pam_ipahbac_la-pam_ipahbac.lo
 src/pam_ipahbac_la-pam_ipahbac.o
+src/ipahbac_test
+src/test.o
 stamp-h1

@@ -17,6 +17,7 @@
     along with PAM IPA HBAC.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +25,25 @@
 #include <security/pam_modules.h>
 
 #include "pam_ipahbac.h"
+
+#define LEN 128
+
+int ipa_check_hbac(const char *thishost, const char *username) {
+	int matchuser=0;
+	int matchhost=0;
+	int retval=0;
+	// int matchsvc=0; FIXE
+
+	if(strncmp("roque.1407.org", thishost, LEN) == 0) {
+		matchhost=1;
+	}
+
+	if(strncmp("rms", username, LEN) == 0) {
+		matchuser=1;
+	}
+
+	return (matchuser && matchhost);
+}
 
 /* expected hook */
 PAM_EXTERN int pam_sm_setcred( pam_handle_t *pamh, int flags, int argc, const char **argv ) {
@@ -34,22 +54,43 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
 	return PAM_IGNORE;
 }
 
-/* expected hook, this is where custom stuff happens */
 PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, const char **argv ) {
 	int retval;
+	int opt;
+	char thishost[LEN];
+	char binduser[LEN];
+	char bindpw[LEN];
+	char base[LEN];
+	const char* username=NULL;
 
-	const char* pUsername;
-	retval = pam_get_user(pamh, &pUsername, "Username: ");
-
+	retval = pam_get_user(pamh, &username, "Username: ");
 	if (retval != PAM_SUCCESS) {
 		return retval;
 	}
 
-	if (strcmp(pUsername, "backdoor") != 0) {
-		return PAM_PERM_DENIED;
+	while( (opt = getopt(argc, (char * const*)argv, "u:p:b:") ) != -1 ) {
+		switch(opt) {
+			case 'u':
+				binduser[LEN-1]='\0';
+				strncpy(binduser, optarg, LEN-1); break;
+			case 'p':
+				bindpw[LEN-1]='\0';
+				strncpy(bindpw, optarg, LEN-1); break;
+			case 'b':
+				base[LEN-1]='\0';
+				strncpy(base, optarg, LEN-1); break;
+		}
 	}
 
-	printf("Welcome %s\n", pUsername);
+	thishost[LEN-1]='\0';
+	gethostname(thishost, LEN-1);
+	//printf("Hostname: %s\n", thishost);
+	//printf("Binduser: %s\n", binduser);
+	//printf("Bindpw: %s\n", bindpw);
+	//printf("Base: %s\n", base);
 
-	return PAM_SUCCESS;
+	if (ipa_check_hbac(thishost, username))
+		return PAM_SUCCESS;
+	else
+		return PAM_PERM_DENIED;
 }
