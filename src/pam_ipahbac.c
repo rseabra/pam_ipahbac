@@ -24,6 +24,8 @@
 #include <security/pam_appl.h>
 #include <security/pam_modules.h>
 
+#include <config.h>
+
 #ifdef HAVE_LDAP_H
 # include <ldap.h>
 #endif
@@ -32,36 +34,48 @@
 
 #define LEN 128
 
-int ipa_check_hbac(const char* ldapservers, const char* binduser, const char* bindpw, const char* thishost, const char* username) {
+#ifdef HAVE_LDAP_H
+int ipa_check_hbac_openldap(const char* ldapservers, const char* binduser, const char* bindpw, const char* thishost, const char* username) {
 	int matchuser=0;
 	int matchhost=0;
 	int retval=0;
 
-#ifdef HAVE_LDAP_H
-	LDAP* ld;
 	int result;
-	int auth_method=LDAP_AUTH_SIMPLE;
-	int version=LDAP_VERSION3;
-#endif
+	int ldap_version=LDAP_VERSION3;
 	// int matchsvc=0; FIXE
+	LDAP* ld=NULL;
 
-	if(strncmp("roque.1407.org", thishost, LEN) == 0) {
-		matchhost=1;
+	retval = ldap_initialize(&ld, ldapservers);
+	if(retval != 0) {
+		printf("Error initializing LDAP: %d\n", retval);
+		return 0;
 	}
 
-	if(strncmp("rms", username, LEN) == 0) {
-		matchuser=1;
+	if( ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &ldap_version) != LDAP_OPT_SUCCESS ) {
+		printf("Error setting LDAPv3\n");
+		return 0;
 	}
 
+	if( (retval = ldap_bind_s(ld, binduser, bindpw, LDAP_AUTH_SIMPLE)) != LDAP_SUCCESS ) {
+		printf("Error binding to LDAP: %s\n", ldap_err2string(retval));
+		return 0;
+	}
+
+	ldap_unbind_s(ld);
 	return (matchuser && matchhost);
 }
+
+int ipa_check_hbac(const char* ldapservers, const char* binduser, const char* bindpw, const char* thishost, const char* username) {
+	return ipa_check_hbac_openldap(ldapservers, binduser, bindpw, thishost, username);
+}
+#endif
 
 /* credentials */
 PAM_EXTERN int pam_sm_setcred( pam_handle_t *pamh, int flags, int argc, const char **argv ) {
 	return PAM_IGNORE;
 }
 
-PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const char **argv) {
+PAM_EXTERN int pam_sm_acct_mgmt( pam_handle_t *pamh, int flags, int argc, const char **argv ) {
 	return PAM_IGNORE;
 }
 
@@ -112,7 +126,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 		return(PAM_PERM_DENIED);
 	}
 
-	retval = snprintf(sysaccount, LEN-1, "cn=%s,cn=sysaccounts,cn=etc,%s", binduser, base);
+	retval = snprintf(sysaccount, LEN-1, "uid=%s,cn=sysaccounts,cn=etc,%s", binduser, base);
 	if( retval <= 0 ) {
 		printf("ERROR: failure defining the sysaccount for %s in %s\n", binduser, base);
 		return(PAM_PERM_DENIED);
@@ -126,8 +140,6 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	//printf("Base: %s\n", base);
 	//printf("LDAP Servers: %s\n", ldapservers);
 
-	if (ipa_check_hbac(ldapservers, sysaccount, bindpw, thishost, username))
-		return PAM_SUCCESS;
-	else
-		return PAM_PERM_DENIED;
+	if (ipa_check_hbac(ldapservers, sysaccount, bindpw, thishost, username)) return PAM_SUCCESS;
+	else return PAM_PERM_DENIED;
 }
