@@ -35,15 +35,123 @@
 #define LEN 128
 
 #ifdef HAVE_LDAP_H
-int ipa_check_hbac_openldap(const char* ldapservers, const char* binduser, const char* bindpw, const char* thishost, const char* username) {
+
+int hbac_check_memberhost(LDAP* ld, const char* base, LDAPMessage* entry, char* attr, const char* name) {
+	int i,pos,retval;
+	char** values=NULL;
+	char dn[1024];
+	int found=0;
+	char groupbase[1024];
+	char filter[1024];
+	const char* attrs[] = { "member", NULL } ;
+	char group[1024];
+	char* index=NULL;
+	LDAPMessage* msg=NULL;
+
+	// create the user DN to match and the group base
+	snprintf(dn, 1024, "fqdn=%s,cn=computers,cn=accounts,%s", name, base);
+	snprintf(groupbase, 1024, "cn=hostgroups,cn=accounts,%s", base);
+	values = ldap_get_values(ld, entry, attr);
+	for(i=0; values[i] != NULL; i++) {
+		index=strstr(values[i], "cn=hostgroups");
+		if(index) {
+			// find out the length of the group cn so it can be extracted into 'group'
+			pos=0;
+			while(values[i][3+pos++] != ',') ;
+			snprintf(group, pos, "%s", values[i]+3);
+
+			// search on ldap whether user dn is a member of the group
+			snprintf(filter, 1024, "(&(objectclass=ipahostgroup)(cn=%s)(member=%s))", group, dn);
+			if( (retval=ldap_search_s(ld, groupbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) != LDAP_SUCCESS) {
+				printf("Error in LDAP search: %s\n", ldap_err2string(retval));
+				ldap_unbind_s(ld);
+				return 0;
+			}
+			if( ldap_count_entries(ld, msg) > 0 ) {
+				//printf("MATCH HOST %s on group %s\n", dn, values[i]);
+				found=1;
+			}
+		} else {
+			index=strstr(values[i], "cn=computers");
+			if(index && strncmp(values[i], dn, 1024) == 0 ) {
+				//printf("MATCH HOST %s\n", dn);
+				found=1;
+			}
+		}
+
+	}
+
+	return found;
+}
+
+int hbac_check_memberuser(LDAP* ld, const char* base, LDAPMessage* entry, char* attr, const char* name) {
+	int i,pos,retval;
+	char** values=NULL;
+	char dn[1024];
+	int found=0;
+	char groupbase[1024];
+	char filter[1024];
+	const char* attrs[] = { "member", NULL } ;
+	char group[1024];
+	char* index=NULL;
+	LDAPMessage* msg=NULL;
+
+	// create the user DN to match and the group base
+	snprintf(dn, 1024, "uid=%s,cn=users,cn=accounts,%s", name, base);
+	snprintf(groupbase, 1024, "cn=groups,cn=accounts,%s", base);
+	values = ldap_get_values(ld, entry, attr);
+	for(i=0; values[i] != NULL; i++) {
+		index=strstr(values[i], "cn=groups");
+		if(index) {
+			// find out the length of the group cn so it can be extracted into 'group'
+			pos=0;
+			while(values[i][3+pos++] != ',') ;
+			snprintf(group, pos, "%s", values[i]+3);
+
+			// search on ldap whether user dn is a member of the group
+			snprintf(filter, 1024, "(&(objectclass=posixgroup)(cn=%s)(member=%s))", group, dn);
+			if( (retval=ldap_search_s(ld, groupbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) != LDAP_SUCCESS) {
+				printf("Error in LDAP search: %s\n", ldap_err2string(retval));
+				ldap_unbind_s(ld);
+				return 0;
+			}
+			if( ldap_count_entries(ld, msg) > 0 ) {
+				//printf("MATCH USER %s on group %s\n", dn, values[i]);
+				found=1;
+			}
+		} else {
+			index=strstr(values[i], "cn=users");
+			if(index && strncmp(values[i], dn, 1024) == 0 ) {
+				//printf("MATCH USER %s\n", dn);
+				found=1;
+			}
+		}
+
+	}
+
+	return found;
+}
+
+int ipa_check_hbac(const char* ldapservers, const char* base, const char* binduser, const char* bindpw, const char* thishost, const char* username) {
+	int attruser;
+	int attrhost;
+	int attrsvc;
 	int matchuser=0;
 	int matchhost=0;
+	int matchsvc=0;
 	int retval=0;
+	int i;
 
-	int result;
+	char hbacbase[1024];
+	const char* filter="(&(objectclass=ipahbacrule)(ipaenabledflag=true)(accessruletype=allow))";
+	const char* attrs[] = { "memberuser", "memberhost", "memberservice", NULL } ;
 	int ldap_version=LDAP_VERSION3;
-	// int matchsvc=0; FIXE
 	LDAP* ld=NULL;
+	LDAPMessage* msg=NULL;
+	LDAPMessage* entry=NULL;
+	char* attr=NULL;
+	char** values=NULL;
+	BerElement* ber=NULL;
 
 	retval = ldap_initialize(&ld, ldapservers);
 	if(retval != 0) {
@@ -61,13 +169,56 @@ int ipa_check_hbac_openldap(const char* ldapservers, const char* binduser, const
 		return 0;
 	}
 
+// ldapsearch -H ldaps://server/ -Z -D 'cn=directory manager' -W -b cn=hbac,dc=domain... '(&(objectclass=ipahbacrule)(ipaenabledflag=true)(accessruletype=allow))' memberuser memberhost memberservice
+
+	snprintf(hbacbase, 1024, "cn=hbac,%s", base);
+	if( (retval=ldap_search_s(ld, hbacbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) != LDAP_SUCCESS) {
+		printf("Error in LDAP search: %s\n", ldap_err2string(retval));
+		ldap_unbind_s(ld);
+		return 0;
+	}
+	//printf("Number of entries: %d\n", ldap_count_entries(ld, msg));
+
+	for(entry = ldap_first_entry(ld, msg); entry != NULL; entry = ldap_next_entry(ld, entry)) {
+		attruser=0;
+		attrhost=0;
+		attrsvc=0;
+
+		for(attr = ldap_first_attribute(ld, entry, &ber); attr != NULL; attr = ldap_next_attribute(ld, msg, ber)) {
+			if( strncmp(attr, "memberuser", 10) == 0) {
+				attruser=1;
+				matchuser = hbac_check_memberuser(ld, base, entry, attr, username);
+			}
+			if( strncmp(attr, "memberhost", 10) == 0) {
+				attrhost=1;
+				matchhost = hbac_check_memberhost(ld, base, entry, attr, thishost);
+			}
+/*
+ * FIXME: test service ACLs
+			if( strncmp(attr, "memberservice", 13) == 0) {
+				attrsvc=1;
+				printf("Services:\n");
+				values = ldap_get_values(ld, entry, attr);
+				for(i=0; values[i] != NULL; i++) {
+					printf("\t%s\n", values[i]);
+				}
+			}
+*/
+		}
+		if(!attruser) matchuser=1;
+		if(!attrhost) matchhost=1;
+		if(!attrsvc) matchsvc=1;
+
+		if (matchuser && matchhost && matchsvc) {
+			ldap_unbind_s(ld);
+			return 1;
+		}
+	}
+
 	ldap_unbind_s(ld);
-	return (matchuser && matchhost);
+	return 0;
 }
 
-int ipa_check_hbac(const char* ldapservers, const char* binduser, const char* bindpw, const char* thishost, const char* username) {
-	return ipa_check_hbac_openldap(ldapservers, binduser, bindpw, thishost, username);
-}
 #endif
 
 /* credentials */
@@ -140,6 +291,6 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	//printf("Base: %s\n", base);
 	//printf("LDAP Servers: %s\n", ldapservers);
 
-	if (ipa_check_hbac(ldapservers, sysaccount, bindpw, thishost, username)) return PAM_SUCCESS;
+	if (ipa_check_hbac(ldapservers, base, sysaccount, bindpw, thishost, username)) return PAM_SUCCESS;
 	else return PAM_PERM_DENIED;
 }
