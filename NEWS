@@ -1,1 +1,2 @@
-None yet.
+ * 2015-12-06 - It's aliiive!
+   It works on GNU/Linux (Fedora 23) for a custom command. Should work on Solaris with OpenLDAP, but copletely untested yet.
