@@ -36,6 +36,55 @@
 
 #ifdef HAVE_LDAP_H
 
+int hbac_check_memberservice(LDAP* ld, const char* base, LDAPMessage* entry, char* attr, const char* name) {
+	int i,pos,retval;
+	char** values=NULL;
+	char dn[1024];
+	int found=0;
+	char groupbase[1024];
+	char filter[1024];
+	const char* attrs[] = { "member", NULL } ;
+	char group[1024];
+	char* index=NULL;
+	LDAPMessage* msg=NULL;
+
+	// create the user DN to match and the group base
+	snprintf(dn, 1024, "cn=%s,cn=hbacservices,cn=hbac,%s", name, base);
+	snprintf(groupbase, 1024, "cn=hbacservicegroups,cn=hbac,%s", base);
+	values = ldap_get_values(ld, entry, attr);
+	for(i=0; values[i] != NULL; i++) {
+		index=strstr(values[i], "cn=hbacservicegroups");
+		if(index) {
+			// find out the length of the group cn so it can be extracted into 'group'
+			pos=0;
+			while(values[i][3+pos++] != ',') ;
+			snprintf(group, pos, "%s", values[i]+3);
+
+			// search on ldap whether user dn is a member of the group
+			snprintf(filter, 1024, "(&(objectclass=*)(cn=%s)(member=%s))", group, dn);
+			if( (retval=ldap_search_s(ld, groupbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) != LDAP_SUCCESS) {
+				printf("Error in LDAP search: %s\n", ldap_err2string(retval));
+				ldap_unbind_s(ld);
+				return 0;
+			}
+			if( ldap_count_entries(ld, msg) > 0 ) {
+				//printf("MATCH SVC %s on group %s\n", dn, values[i]);
+				found=1;
+			}
+		} else {
+			index=strstr(values[i], "cn=hbacservices");
+			if(index && strncmp(values[i], dn, 1024) == 0 ) {
+				//printf("MATCH SVC %s\n", dn);
+				found=1;
+			}
+		}
+
+	}
+
+	return found;
+}
+
+
 int hbac_check_memberhost(LDAP* ld, const char* base, LDAPMessage* entry, char* attr, const char* name) {
 	int i,pos,retval;
 	char** values=NULL;
@@ -132,7 +181,7 @@ int hbac_check_memberuser(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 	return found;
 }
 
-int ipa_check_hbac(const char* ldapservers, const char* base, const char* binduser, const char* bindpw, const char* thishost, const char* username) {
+int ipa_check_hbac(const char* ldapservers, const char* base, const char* binduser, const char* bindpw, const char* thishost, const char* svcname, const char* username) {
 	int attruser;
 	int attrhost;
 	int attrsvc;
@@ -193,17 +242,10 @@ int ipa_check_hbac(const char* ldapservers, const char* base, const char* bindus
 				attrhost=1;
 				matchhost = hbac_check_memberhost(ld, base, entry, attr, thishost);
 			}
-/*
- * FIXME: test service ACLs
 			if( strncmp(attr, "memberservice", 13) == 0) {
 				attrsvc=1;
-				printf("Services:\n");
-				values = ldap_get_values(ld, entry, attr);
-				for(i=0; values[i] != NULL; i++) {
-					printf("\t%s\n", values[i]);
-				}
+				matchsvc = hbac_check_memberservice(ld, base, entry, attr, svcname);
 			}
-*/
 		}
 		if(!attruser) matchuser=1;
 		if(!attrhost) matchhost=1;
@@ -239,12 +281,21 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	char base[LEN];
 	char ldapservers[LEN];
 	const char* username=NULL;
+	const char* svcname=NULL;
 	int gotuser=0,gotpass=0,gotbase=0,gotservers=0;
 
 	retval = pam_get_user(pamh, &username, "Username: ");
 	if (retval != PAM_SUCCESS) {
 		return retval;
 	}
+
+	retval = pam_get_item(pamh, PAM_SERVICE, &svcname);
+	if (retval != PAM_SUCCESS) {
+		return retval;
+	}
+
+	thishost[LEN-1]='\0';
+	gethostname(thishost, LEN-1);
 
 	optind=0;
 	while( (opt = getopt(argc, (char * const*)argv, "u:p:b:l:") ) != -1 ) {
@@ -283,14 +334,12 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 		return(PAM_PERM_DENIED);
 	}
 
-	thishost[LEN-1]='\0';
-	gethostname(thishost, LEN-1);
 	//printf("Hostname: %s\n", thishost);
 	//printf("Binduser: %s\n", sysaccount);
 	//printf("Bindpw: %s\n", bindpw);
 	//printf("Base: %s\n", base);
 	//printf("LDAP Servers: %s\n", ldapservers);
 
-	if (ipa_check_hbac(ldapservers, base, sysaccount, bindpw, thishost, username)) return PAM_SUCCESS;
+	if (ipa_check_hbac(ldapservers, base, sysaccount, bindpw, thishost, svcname, username)) return PAM_SUCCESS;
 	else return PAM_PERM_DENIED;
 }
