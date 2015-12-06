@@ -5,34 +5,23 @@ This is just a simple PAM module to implement FreeIPA HBAC for systems that don'
 
 To build, either use the build scripts or use these commands:
 
-**Build the PAM module**
+**Building the PAM module**
 
-`gcc -fPIC -fno-stack-protector -c src/pam_ipahbac.c`
+	./configure --prefix=/usr
+	make
+	sudo make install
 
-`sudo ld -x --shared -o /lib/security/pam_ipahbac.so pam_ipahbac.o`
+**Testing**
 
-The first command builds the object file in the current directory and the second links it with PAM.
-Since it's a shared library, PAM can use it on the fly without having to restart.
-
-**Build Test**
-
-`gcc -o pam_test src/test.c -lpam -lpam_misc`
+	cat <<EOF > /etc/pam.d/ipahbac_test
+	auth       required     /lib64/security/pam_ipahbac.so blameGetOpt -u YourSysAccount -b dc=your,dc=domain -p thePassw0rd -l ldaps://ldap1/,ldaps://ldap2/..
+	account    required     /lib64/security/pam_ipahbac.so blameGetOpt -u YourSysAccount -b dc=your,dc=domain -p thePassw0rd -l ldaps://ldap1/,ldaps://ldap2/..
+	EOF
 
 Simple Usage
 ------------
 
-The build scripts will take care of putting your module where it needs to be, `/lib/security`, so the next thing to do is edit config files.
-
-The config files are located in `/etc/pam.d/` and the one I edited was `/etc/pam.d/common-auth`.
-
-The test application tests auth and account functionality (although account isn't very interesting). At the top of the pam file (or anywhere), put these lines:
-
-	auth sufficient pam_ipahbac.so
-	account sufficient pam_ipahbac.so
-
-I think the account part should technically go in `/etc/pam.d/common-account`, but I put mine in the same place so I'd remember to take them out later.
-
-To run the test program, just do: `pam_test backdoor` and you should get some messages saying that you're authenticated! Maybe this is how Sam Flynn 'hacked' his father's computer in TRON Legacy =D.
+Take a look at Testing above, apply to the commands you want.
 
 Resources
 =========
@@ -63,6 +52,6 @@ Good example for simple authentication.  I adapted this one in my simple PAM mod
 License
 =======
 
-The whole project is licensed under the GNU GPL version 2 or later. Portions may be in MIT if some of the original code of simple-pam remains. If none remains after sometime, this alert will be removed.
+The whole project is licensed under the GNU GPL version 2 or later. test.c is licensed under MIT since most of it's original code remains. If none remains after sometime, this alert will be removed.
 
 Aditionally, you're allowed to link with Solaris and AIX's PAM libraries.
