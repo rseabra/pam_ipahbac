@@ -1,13 +1,25 @@
-#include <security/pam_appl.h>
-#include <security/pam_misc.h>
 #include <stdio.h>
 
+#include <security/pam_appl.h>
+
 #define ME "ipahbac_test"
+
+#ifndef SOLARIS_BUILD
+#include <security/pam_misc.h>
 
 const struct pam_conv conv = {
 	misc_conv,
 	NULL
 };
+
+#else
+const struct pam_conv conv = {
+	NULL,
+	NULL
+};
+
+#endif
+
 
 int main(int argc, char *argv[]) {
 	pam_handle_t* pamh = NULL;

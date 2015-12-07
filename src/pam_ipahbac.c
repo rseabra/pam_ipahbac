@@ -26,15 +26,11 @@
 
 #include <config.h>
 
-#ifdef HAVE_LDAP_H
-# include <ldap.h>
-#endif
-
 #include "pam_ipahbac.h"
 
-#define LEN 128
-
 #ifdef HAVE_LDAP_H
+
+#include <ldap.h>
 
 int hbac_check_memberservice(LDAP* ld, const char* base, LDAPMessage* entry, char* attr, const char* name) {
 	int i,pos,retval;
@@ -43,7 +39,7 @@ int hbac_check_memberservice(LDAP* ld, const char* base, LDAPMessage* entry, cha
 	int found=0;
 	char groupbase[1024];
 	char filter[1024];
-	const char* attrs[] = { "member", NULL } ;
+	char* attrs[] = { "member", NULL } ;
 	char group[1024];
 	char* index=NULL;
 	LDAPMessage* msg=NULL;
@@ -92,7 +88,7 @@ int hbac_check_memberhost(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 	int found=0;
 	char groupbase[1024];
 	char filter[1024];
-	const char* attrs[] = { "member", NULL } ;
+	char* attrs[] = { "member", NULL } ;
 	char group[1024];
 	char* index=NULL;
 	LDAPMessage* msg=NULL;
@@ -140,7 +136,7 @@ int hbac_check_memberuser(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 	int found=0;
 	char groupbase[1024];
 	char filter[1024];
-	const char* attrs[] = { "member", NULL } ;
+	char* attrs[] = { "member", NULL } ;
 	char group[1024];
 	char* index=NULL;
 	LDAPMessage* msg=NULL;
@@ -181,7 +177,7 @@ int hbac_check_memberuser(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 	return found;
 }
 
-int ipa_check_hbac(const char* ldapservers, const char* base, const char* binduser, const char* bindpw, const char* thishost, const char* svcname, const char* username) {
+int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, const char* bindpw, const char* thishost, const char* svcname, const char* username, char* keydb) {
 	int attruser;
 	int attrhost;
 	int attrsvc;
@@ -189,24 +185,45 @@ int ipa_check_hbac(const char* ldapservers, const char* base, const char* bindus
 	int matchhost=0;
 	int matchsvc=0;
 	int retval=0;
-	int i;
 
 	char hbacbase[1024];
 	const char* filter="(&(objectclass=ipahbacrule)(ipaenabledflag=true)(accessruletype=allow))";
-	const char* attrs[] = { "memberuser", "memberhost", "memberservice", NULL } ;
+	char* attrs[] = { "memberuser", "memberhost", "memberservice", NULL } ;
 	int ldap_version=LDAP_VERSION3;
 	LDAP* ld=NULL;
 	LDAPMessage* msg=NULL;
 	LDAPMessage* entry=NULL;
 	char* attr=NULL;
-	char** values=NULL;
 	BerElement* ber=NULL;
 
+#ifdef SOLARIS_BUILD
+
+# define LDAP_OPT_SUCCESS LDAP_SUCCESS
+
+	int i,len;
+
+	if(ldapssl_client_init(keydb, NULL) < 0) {
+		printf("Error initializing ssl client\n");
+		return 0;
+	}
+
+	len = strlen(ldapservers);
+	for(i=0; i<=len; i++) {
+		if(ldapservers[i]==',') ldapservers[i]=' ';
+	}
+
+	ld = ldapssl_init(ldapservers, 636, LDAPSSL_AUTH_CNCHECK);
+	if(ld == NULL) {
+		printf("Error initializing LDAP (ldapssl_init returned NULL)\n");
+		return 0;
+	}
+#else
 	retval = ldap_initialize(&ld, ldapservers);
 	if(retval != 0) {
 		printf("Error initializing LDAP: %d\n", retval);
 		return 0;
 	}
+#endif
 
 	if( ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &ldap_version) != LDAP_OPT_SUCCESS ) {
 		printf("Error setting LDAPv3\n");
@@ -264,32 +281,51 @@ int ipa_check_hbac(const char* ldapservers, const char* base, const char* bindus
 #endif
 
 /* credentials */
+#ifdef SOLARIS_BUILD
+int pam_sm_setcred( pam_handle_t *pamh, int flags, int argc, const char **argv ) {
+	return PAM_IGNORE;
+}
+
+int pam_sm_acct_mgmt( pam_handle_t *pamh, int flags, int argc, const char **argv ) {
+	return pam_sm_authenticate(pamh, flags, argc, argv);
+}
+
+int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, const char **argv ) {
+#else
 PAM_EXTERN int pam_sm_setcred( pam_handle_t *pamh, int flags, int argc, const char **argv ) {
 	return PAM_IGNORE;
 }
 
 PAM_EXTERN int pam_sm_acct_mgmt( pam_handle_t *pamh, int flags, int argc, const char **argv ) {
-	return PAM_IGNORE;
+	return pam_sm_authenticate(pamh, flags, argc, argv);
 }
 
 PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, const char **argv ) {
+#endif
 	int retval;
 	int opt;
 	char thishost[LEN];
 	char binduser[LEN], sysaccount[LEN];
 	char bindpw[LEN];
 	char base[LEN];
+	char* keydb=NULL;
 	char ldapservers[LEN];
+#ifdef SOLARIS_BUILD
+	char* username=NULL;
+	char* svcname=NULL;
+#endif
+#ifdef GNULINUX_BUILD
 	const char* username=NULL;
 	const char* svcname=NULL;
-	int gotuser=0,gotpass=0,gotbase=0,gotservers=0;
+#endif
+	int gotuser=0,gotpass=0,gotbase=0,gotservers=0,gotkeydb=0;
 
 	retval = pam_get_user(pamh, &username, "Username: ");
 	if (retval != PAM_SUCCESS) {
 		return retval;
 	}
 
-	retval = pam_get_item(pamh, PAM_SERVICE, &svcname);
+	retval = pam_get_item(pamh, PAM_SERVICE, (void*)&svcname);
 	if (retval != PAM_SUCCESS) {
 		return retval;
 	}
@@ -298,7 +334,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	gethostname(thishost, LEN-1);
 
 	optind=0;
-	while( (opt = getopt(argc, (char * const*)argv, "u:p:b:l:") ) != -1 ) {
+	while( (opt = getopt(argc, (char * const*)argv, "k:u:p:b:l:") ) != -1 ) {
 		switch(opt) {
 			case 'u':
 				binduser[LEN-1]='\0';
@@ -320,6 +356,13 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 				strncpy(ldapservers, optarg, LEN-1);
 				gotservers=1;
 				break;
+			case 'k':
+				gotkeydb=strlen(optarg);
+				keydb=malloc(gotkeydb+1);
+				memset(keydb, 0, gotkeydb+1);
+				strncpy(keydb, optarg, gotkeydb);
+				gotkeydb=1;
+				break;
 		}
 	}
 
@@ -340,6 +383,6 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	//printf("Base: %s\n", base);
 	//printf("LDAP Servers: %s\n", ldapservers);
 
-	if (ipa_check_hbac(ldapservers, base, sysaccount, bindpw, thishost, svcname, username)) return PAM_SUCCESS;
+	if (ipa_check_hbac(ldapservers, base, sysaccount, bindpw, thishost, svcname, username, keydb)) return PAM_SUCCESS;
 	else return PAM_PERM_DENIED;
 }

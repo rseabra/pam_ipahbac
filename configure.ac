@@ -41,31 +41,21 @@ AC_ARG_ENABLE([pamdir], [AS_HELP_STRING([--enable-pamdir],
 AC_SUBST(pamdir)
 
 
-dnl make variables chenge with this flag?
 case "$host" in
 	sparc-* | sparc64-*)
-		LIBS="$LIBS -lresolv";;
+		LIBS="$LIBS -lresolv"
+		AC_SUBST(pammisc,[])
+		AC_DEFINE([SOLARIS_BUILD], [1], [Whether to build against Solaris])
+	;;
+	*inux*)
+		AC_SUBST(pammisc,[-lpam_misc])
+		AC_DEFINE([GNULINUX_BUILD], [1], [Whether to build against Solaris])
+	;;
+	Aix)
+		AC_SUBST(pammisc,[])
+		AC_DEFINE([AIX_BUILD], [1], [Whether to build against Solaris])
+	;;
 esac
-
-AC_ARG_WITH([solaris], AS_HELP_STRING([--with-solaris], [Build against Solaris]))
-
-if test "x$with_solaris" != "xno"; then
-dnl	PKG_CHECK_MODULES(FRAMEWORKD_GLIB, libframeworkd-glib, [],
-dnl		[AC_MSG_FAILURE([libframeworkd-glib not found])]
-dnl		)
-
-	AC_DEFINE([SOLARIS_BUILD], [1], [Whether to build against Solaris])
-fi
-
-AC_ARG_WITH([aix], AS_HELP_STRING([--with-aix], [Build against AIX]))
-
-if test "x$with_aix" != "xno"; then
-dnl	PKG_CHECK_MODULES(FRAMEWORKD_GLIB, libframeworkd-glib, [],
-dnl		[AC_MSG_FAILURE([libframeworkd-glib not found])]
-dnl		)
-
-	AC_DEFINE([AIX_BUILD], [1], [Whether to build against AIX])
-fi
 
 AC_ARG_ENABLE([hbaccfg], [AS_HELP_STRING([--enable-hbaccfg],
               [Location to install the pam module ($sysconfdir/ipa-hbac.conf)])],
