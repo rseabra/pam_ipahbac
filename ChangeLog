@@ -1,0 +1,8 @@
+2015-12-07 Rui Miguel Silva Seabra <rms@1407.org>
+	* It now works with Solaris 11.3 Needed a few changes but it works. It's
+	untested against other Solaris versions and I won't bother doing it. If
+	someone needs needs to, please test and report :)
+
+2015-12-06 Rui Miguel Silva Seabra <rms@1407.org>
+	* It's aliiive! It works on GNU/Linux (Fedora 23) for a custom command. Should
+	work on Solaris with OpenLDAP, but it's completely untested so far.

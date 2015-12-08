@@ -1,4 +1,4 @@
-Solaris:
+Solaris < 11.3:
 	* test the code
 
 AIX:

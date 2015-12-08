@@ -13,9 +13,11 @@ To build, either use the build scripts or use these commands:
 
 **Testing**
 
+You can check sample.pam included for more details about configuring the module, but it's a bit like this:
+
 	cat <<EOF > /etc/pam.d/ipahbac_test
-	auth       required     /lib64/security/pam_ipahbac.so blameGetOpt -u YourSysAccount -b dc=your,dc=domain -p thePassw0rd -l ldaps://ldap1/,ldaps://ldap2/..
-	account    required     /lib64/security/pam_ipahbac.so blameGetOpt -u YourSysAccount -b dc=your,dc=domain -p thePassw0rd -l ldaps://ldap1/,ldaps://ldap2/..
+	auth       required     pam_ipahbac.so blameGetOpt -u YourSysAccount -b dc=your,dc=domain -p thePassw0rd -l ldaps://ldap1/,ldaps://ldap2/..
+	account    required     pam_ipahbac.so blameGetOpt -u YourSysAccount -b dc=your,dc=domain -p thePassw0rd -l ldaps://ldap1/,ldaps://ldap2/..
 	EOF
 
 Simple Usage
