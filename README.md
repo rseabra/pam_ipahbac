@@ -1,3 +1,5 @@
+![FreeIPA logo](https://www.freeipa.org/images/freeipa/freeipa-logo-small.png)
+
 Intro
 =====
 
