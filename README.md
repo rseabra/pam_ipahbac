@@ -28,7 +28,9 @@ Take a look at Testing above, apply to the commands you want.
 Known Issues
 ------------
 
-Although it's oriented towards Solaris, AIX and non SSSD GNU/Linux systems or commands, it has only been tested in Fedora 23, so far. :)
+Although it's oriented towards Solaris, AIX and non SSSD GNU/Linux systems or commands, so far it has only been tested in :
+* Fedora 23
+* Solaris 11.3
 
 Resources
 =========
