@@ -15,7 +15,7 @@ pam_ipahbac_la_CFLAGS = -fPIC -fstack-protector-strong -Wall
 pam_ipahbac_la_LDFLAGS = -module -avoid-version -shared -export-dynamic -lpam --as-needed --disable-static --shared -llber -lldap
 
 install-data-hook:
-	rm -f $(DESTDIR)$(pamdir)/pam_ipahback.la
+	rm -f $(DESTDIR)$(pamdir)/pam_ipahbac.la
 	libtool --finish $(DESTDIR)$(pamdir)
 	${INSTALL} -d $(DESTDIR)$(docdir)
 	${INSTALL} -m 644 sample.pam $(DESTDIR)$(docdir)
