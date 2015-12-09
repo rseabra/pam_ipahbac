@@ -28,10 +28,9 @@
 
 #include "pam_ipahbac.h"
 
-#ifdef HAVE_LDAP_H
-
 #include <ldap.h>
 
+#ifdef HAVE_LDAP_H
 int hbac_check_memberservice(LDAP* ld, const char* base, LDAPMessage* entry, char* attr, const char* name) {
 	int i,pos,retval;
 	char** values=NULL;
