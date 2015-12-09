@@ -41,13 +41,13 @@ AC_ARG_ENABLE([pamdir], [AS_HELP_STRING([--enable-pamdir],
 AC_SUBST(pamdir)
 
 
-case "$host" in
-	sparc-* | sparc64-*)
+case "$host_os" in
+	*solaris*)
 		LIBS="$LIBS -lresolv"
 		AC_SUBST(pammisc,[])
 		AC_DEFINE([SOLARIS_BUILD], [1], [Whether to build against Solaris])
 	;;
-	*inux*)
+	*linux-gnu*)
 		AC_SUBST(pammisc,[-lpam_misc])
 		AC_DEFINE([GNULINUX_BUILD], [1], [Whether to build against Solaris])
 	;;

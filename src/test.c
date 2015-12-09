@@ -4,7 +4,7 @@
 
 #define ME "ipahbac_test"
 
-#ifndef SOLARIS_BUILD
+#ifdef GNULINUX_BUILD
 #include <security/pam_misc.h>
 
 const struct pam_conv conv = {
@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
 
 	if(argc != 2) {
 		printf("Usage: %s [username]\n", argv[0]);
-		exit(1);
+		return 1;
 	}
 
 	user = argv[1];
@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
 	// Can the accound be used at this time?
 	if (retval != PAM_SUCCESS) {
 		printf("Access denied.\n");
-		exit(1);
+		return 1;
 	}
 	printf("Access allowed.\n");
 
@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
 	if (pam_end(pamh, retval) != PAM_SUCCESS) {
 		pamh = NULL;
 		printf("%s: failed to release authenticator\n", ME);
-		exit(1);
+		return 1;
 	}
 
 	return retval == PAM_SUCCESS ? 0 : 1;
