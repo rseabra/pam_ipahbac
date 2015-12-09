@@ -50,6 +50,7 @@ case "$host_os" in
 		AC_SUBST(LDAPLIBS,["-lldap -llber"])
 		AC_SUBST(STACKPROT,["-fstack-protector"])
 		AC_DEFINE([SOLARIS_BUILD], [1], [Whether to build against Solaris])
+		AC_SUBST(XLCFLAGS,[""])
 	;;
 	*aix*)
 		AC_SUBST(pammisc,[])
@@ -74,12 +75,14 @@ case "$host_os" in
 		AC_SUBST(WARNINGS,[""])
 		AC_SUBST([LDAPCFLAGS], ["-I $with_aixldap/include"])
 		AC_SUBST([LDAPLIBS], ["-L$with_aixldap/lib64 -lldap"])
+		AC_SUBST(XLCFLAGS,["-q64"])
 	;;
 	*)
 		AC_SUBST(WARNINGS,["-Wall"])
 		AC_SUBST([LDAPCFLAGS], [""])
 		AC_SUBST(LDAPLIBS,["-lldap -llber"])
 		AC_SUBST(STACKPROT,["-fstack-protector-strong"])
+		AC_SUBST(XLCFLAGS,[""])
 		AC_DEFINE([GNULINUX_BUILD], [1], [Whether to build against a GNU/Linux system [default]])
 	;;
 esac
