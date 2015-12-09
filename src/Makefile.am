@@ -11,8 +11,8 @@ moduledir = @pamdir@
 module_LTLIBRARIES = pam_ipahbac.la
 
 pam_ipahbac_la_SOURCES = pam_ipahbac.c pam_ipahbac.h
-pam_ipahbac_la_CFLAGS = -fPIC -fstack-protector-strong -Wall
-pam_ipahbac_la_LDFLAGS = -module -avoid-version -shared -export-dynamic -lpam --as-needed --disable-static --shared -llber -lldap
+pam_ipahbac_la_CFLAGS = -fPIC @STACKPROT@ @WARNINGS@ @LDAPCFLAGS@
+pam_ipahbac_la_LDFLAGS = -module -avoid-version -shared -export-dynamic -lpam --as-needed --disable-static --shared @LDAPLIBS@
 
 install-data-hook:
 	rm -f $(DESTDIR)$(pamdir)/pam_ipahbac.la

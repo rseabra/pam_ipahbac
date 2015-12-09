@@ -45,15 +45,42 @@ case "$host_os" in
 	*solaris*)
 		LIBS="$LIBS -lresolv"
 		AC_SUBST(pammisc,[])
+		AC_SUBST(WARNINGS,["-Wall"])
+		AC_SUBST([LDAPCFLAGS], [""])
+		AC_SUBST(LDAPLIBS,["-lldap -llber"])
+		AC_SUBST(STACKPROT,["-fstack-protector"])
 		AC_DEFINE([SOLARIS_BUILD], [1], [Whether to build against Solaris])
 	;;
-	*linux-gnu*)
-		AC_SUBST(pammisc,[-lpam_misc])
-		AC_DEFINE([GNULINUX_BUILD], [1], [Whether to build against Solaris])
-	;;
-	Aix)
+	*aix*)
 		AC_SUBST(pammisc,[])
 		AC_DEFINE([AIX_BUILD], [1], [Whether to build against Solaris])
+
+		AC_ARG_WITH([aixldap],
+			[AS_HELP_STRING([--with-aixldap=path],
+				[enable building against AIX LDAP])],
+			[],
+			[with_aixldap=no])
+
+		AIXLDAP=
+		AS_IF([ test "x$with_aixldap" != xno ],
+			[AC_CHECK_LIB([ldap], [main],
+				[
+		 		AC_DEFINE([HAVE_AIXLDAP], [1],
+					[Define if you have AIX LDAP])
+				],
+				[AC_MSG_FAILURE(
+					[--with-aixldap was given, but test for ldap failed])],
+				[])])
+		AC_SUBST(WARNINGS,[""])
+		AC_SUBST([LDAPCFLAGS], ["-I $with_aixldap/include"])
+		AC_SUBST([LDAPLIBS], ["-L$with_aixldap/lib64 -lldap"])
+	;;
+	*)
+		AC_SUBST(WARNINGS,["-Wall"])
+		AC_SUBST([LDAPCFLAGS], [""])
+		AC_SUBST(LDAPLIBS,["-lldap -llber"])
+		AC_SUBST(STACKPROT,["-fstack-protector-strong"])
+		AC_DEFINE([GNULINUX_BUILD], [1], [Whether to build against a GNU/Linux system [default]])
 	;;
 esac
 

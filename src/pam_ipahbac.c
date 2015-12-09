@@ -196,7 +196,7 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 	char* attr=NULL;
 	BerElement* ber=NULL;
 
-#ifdef SOLARIS_BUILD
+#if defined(SOLARIS_BUILD) || defined(AIX_BUILD)
 
 # define LDAP_OPT_SUCCESS LDAP_SUCCESS
 
@@ -281,7 +281,7 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 #endif
 
 /* credentials */
-#ifdef SOLARIS_BUILD
+#if defined(SOLARIS_BUILD) || defined(AIX_BUILD)
 int pam_sm_setcred( pam_handle_t *pamh, int flags, int argc, const char **argv ) {
 	return PAM_IGNORE;
 }
@@ -310,7 +310,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	char base[LEN];
 	char* keydb=NULL;
 	char ldapservers[LEN];
-#ifdef SOLARIS_BUILD
+#if defined(SOLARIS_BUILD) || defined(AIX_BUILD)
 	char* username=NULL;
 	char* svcname=NULL;
 #endif
