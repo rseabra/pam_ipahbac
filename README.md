@@ -9,6 +9,9 @@ To build, either use the build scripts or use these commands:
 
 **Building the PAM module**
 
+	export CC=/opt/IBM/xlc/13.1.0/bin/xlc # AIX only
+	export OBJECT_MODE=64 # AIX only
+	
 	./configure --prefix=/usr
 	make
 	sudo make install
