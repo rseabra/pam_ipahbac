@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <security/pam_appl.h>
 #include <security/pam_modules.h>
 
@@ -279,6 +280,40 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 
 #endif
 
+int free_and_return(int retval, char* binduser, char* bindpw, char* base, char* ldapservers, char* keydb) {
+	if(binduser) free(binduser);
+	if(bindpw) free(bindpw);
+	if(base) free(base);
+	if(ldapservers) free(ldapservers);
+	if(keydb) free(keydb);
+	return retval;
+}
+
+int check_exceptions(const char* exceptions_file, const char* username) {
+	int len;
+	FILE* file=NULL;
+	char line[LEN];
+	file = fopen(exceptions_file, "r");
+	if(!file) {
+		printf("Error opening %s: %s\n", exceptions_file, strerror(errno));
+		return 0;
+	}
+
+	while(fgets(line, LEN, file)) {
+		len = strlen(line);
+		if(line[len-1] == '\n')
+			line[--len] = 0;
+		if(line[len-1] == '\r')
+			line[--len] = 0;
+		if(0 == strcmp(line, username)) {
+			fclose(file);
+			return 1;
+		}
+	}
+	fclose(file);
+	return 0;
+}
+
 /* credentials */
 #if defined(SOLARIS_BUILD) || defined(AIX_BUILD)
 int pam_sm_setcred( pam_handle_t *pamh, int flags, int argc, const char **argv ) {
@@ -304,11 +339,11 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	int retval;
 	int opt;
 	char thishost[LEN];
-	char binduser[LEN], sysaccount[LEN];
-	char bindpw[LEN];
-	char base[LEN];
+	char* binduser=NULL;
+	char* bindpw=NULL;
+	char* base=NULL;
 	char* keydb=NULL;
-	char ldapservers[LEN];
+	char* ldapservers=NULL;
 #if defined(SOLARIS_BUILD) || defined(AIX_BUILD)
 	char* username=NULL;
 	char* svcname=NULL;
@@ -317,6 +352,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	const char* username=NULL;
 	const char* svcname=NULL;
 #endif
+	char sysaccount[LEN];
 	int gotuser=0,gotpass=0,gotbase=0,gotservers=0,gotkeydb=0;
 
 	retval = pam_get_user(pamh, &username, "Username: ");
@@ -333,47 +369,66 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	gethostname(thishost, LEN-1);
 
 	optind=0;
-	while( (opt = getopt(argc, (char * const*)argv, "k:u:p:b:l:") ) != -1 ) {
+	while( (opt = getopt(argc, (char * const*)argv, "k:u:p:b:l:x:") ) != -1 ) {
 		switch(opt) {
 			case 'u':
-				binduser[LEN-1]='\0';
-				strncpy(binduser, optarg, LEN-1);
+				binduser=strndup(optarg, LEN-1);
+				if(!binduser) {
+					printf("Error reading binduser %s: %s\n", optarg, strerror(errno));
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+				}
 				gotuser=1;
 				break;
 			case 'p':
-				bindpw[LEN-1]='\0';
-				strncpy(bindpw, optarg, LEN-1);
+				bindpw=strndup(optarg, LEN-1);
+				if(!bindpw) {
+					printf("Error reading bindpw %s: %s\n", optarg, strerror(errno));
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+				}
 				gotpass=1;
 				break;
 			case 'b':
-				base[LEN-1]='\0';
-				strncpy(base, optarg, LEN-1);
+				base=strndup(optarg, LEN-1);
+				if(!base) {
+					printf("Error reading base %s: %s\n", optarg, strerror(errno));
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+				}
 				gotbase=1;
 				break;
 			case 'l':
-				ldapservers[LEN-1]='\0';
-				strncpy(ldapservers, optarg, LEN-1);
+				ldapservers=strndup(optarg, LEN-1);
+				if(!ldapservers) {
+					printf("Error reading ldapservers %s: %s\n", optarg, strerror(errno));
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+				}
 				gotservers=1;
 				break;
 			case 'k':
-				gotkeydb=strlen(optarg);
-				keydb=malloc(gotkeydb+1);
-				memset(keydb, 0, gotkeydb+1);
-				strncpy(keydb, optarg, gotkeydb);
+				keydb=strndup(optarg, LEN-1);
+				if(!keydb) {
+					printf("Error reading keydb %s: %s\n", optarg, strerror(errno));
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+				}
 				gotkeydb=1;
+				break;
+			case 'x':
+				if(check_exceptions(optarg, username) ) {
+					return free_and_return(PAM_SUCCESS, binduser, bindpw, base, ldapservers, keydb);
+				}
 				break;
 		}
 	}
 
 	if( ! (gotuser && gotpass && gotbase && gotservers ) ) {
 		printf("ERROR: missing -u, -p, -b or -l parameters (%d,%d,%d,%d). Please RTFM.\n", gotuser, gotpass, gotbase, gotservers);
-		return(PAM_PERM_DENIED);
+		return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 	}
 
 	retval = snprintf(sysaccount, LEN-1, "uid=%s,cn=sysaccounts,cn=etc,%s", binduser, base);
+
 	if( retval <= 0 ) {
 		printf("ERROR: failure defining the sysaccount for %s in %s\n", binduser, base);
-		return(PAM_PERM_DENIED);
+		return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 	}
 
 	//printf("Hostname: %s\n", thishost);
@@ -382,6 +437,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	//printf("Base: %s\n", base);
 	//printf("LDAP Servers: %s\n", ldapservers);
 
-	if (ipa_check_hbac(ldapservers, base, sysaccount, bindpw, thishost, svcname, username, keydb)) return PAM_SUCCESS;
-	else return PAM_PERM_DENIED;
+	if (ipa_check_hbac(ldapservers, base, sysaccount, bindpw, thishost, svcname, username, keydb))
+		return free_and_return(PAM_SUCCESS, binduser, bindpw, base, ldapservers, keydb);
+	else return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 }
