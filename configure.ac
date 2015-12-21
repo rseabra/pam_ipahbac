@@ -2,7 +2,7 @@
 AC_COPYRIGHT([
 See the included file: COPYING for copyright information.
 ])
-AC_INIT([pam_ipahbac], [0.0.1], [rms@1407.org],
+AC_INIT([pam_ipahbac], [0.0.2], [rms@1407.org],
         [pam_ipahbac], [https://github.com/rseabra/pam_ipahbac/])
 # Force autoconf to be at least this version number:
 AC_PREREQ([2.68])
