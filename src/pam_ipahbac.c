@@ -398,11 +398,13 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 				bindpw=malloc(len);
 				if(!bindpw) {
 					printf("Not enough memory to create bindpw buffer: %s\n", strerror(errno));
+					fclose(bindpwfile);
 					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 				}
 				memset(bindpw, 0, len);
 				if(!fgets(bindpw, len, bindpwfile)) {
 					printf("Error reading bindpw from %s: %s\n", optarg, strerror(errno));
+					fclose(bindpwfile);
 					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 				}
 				fclose(bindpwfile);
