@@ -341,6 +341,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	char thishost[LEN];
 	char* binduser=NULL;
 	char* bindpw=NULL;
+	FILE* bindpwfile=NULL;
 	char* base=NULL;
 	char* keydb=NULL;
 	char* ldapservers=NULL;
@@ -353,7 +354,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	const char* svcname=NULL;
 #endif
 	char sysaccount[LEN];
-	int gotuser=0,gotpass=0,gotbase=0,gotservers=0,gotkeydb=0;
+	int gotuser=0,gotpass=0,gotbase=0,gotservers=0,gotkeydb=0,len=0;
 
 	retval = pam_get_user(pamh, &username, "Username: ");
 	if (retval != PAM_SUCCESS) {
@@ -369,7 +370,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	gethostname(thishost, LEN-1);
 
 	optind=0;
-	while( (opt = getopt(argc, (char * const*)argv, "k:u:p:b:l:x:") ) != -1 ) {
+	while( (opt = getopt(argc, (char * const*)argv, "k:u:p:P:b:l:x:") ) != -1 ) {
 		switch(opt) {
 			case 'u':
 				binduser=strndup(optarg, LEN-1);
@@ -385,6 +386,27 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 					printf("Error reading bindpw %s: %s\n", optarg, strerror(errno));
 					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 				}
+				gotpass=1;
+				break;
+			case 'P':
+				bindpwfile=fopen(optarg, "r");
+				if(!bindpwfile) {
+					printf("Error opening bindpw from %s: %s\n", optarg, strerror(errno));
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+				}
+				len=LEN*sizeof(char);
+				bindpw=malloc(len);
+				if(!bindpw) {
+					printf("Not enough memory to create bindpw buffer: %s\n", strerror(errno));
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+				}
+				memset(bindpw, 0, len);
+				if(!fgets(bindpw, len, bindpwfile)) {
+					printf("Error reading bindpw from %s: %s\n", optarg, strerror(errno));
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+				}
+				fclose(bindpwfile);
+				printf("Got password: '%s'\n", bindpw);
 				gotpass=1;
 				break;
 			case 'b':
