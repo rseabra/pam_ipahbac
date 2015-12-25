@@ -56,8 +56,8 @@ int hbac_check_memberservice(LDAP* ld, const char* base, LDAPMessage* entry, cha
 	LDAPMessage* msg=NULL;
 
 	// create the user DN to match and the group base
-	snprintf(dn, MYLEN, "cn=%s,cn=hbacservices,cn=hbac,%s", name, base);
-	snprintf(groupbase, MYLEN, "cn=hbacservicegroups,cn=hbac,%s", base);
+	if(0 > snprintf(dn, MYLEN, "cn=%s,cn=hbacservices,cn=hbac,%s", (char*)name, (char*)base)) return 0;
+	if(0 > snprintf(groupbase, MYLEN, "cn=hbacservicegroups,cn=hbac,%s", (char*)base)) return 0;
 	values = ldap_get_values(ld, entry, attr);
 	for(i=0; values[i] != NULL; i++) {
 		index=strstr(values[i], "cn=hbacservicegroups");
@@ -65,10 +65,10 @@ int hbac_check_memberservice(LDAP* ld, const char* base, LDAPMessage* entry, cha
 			// find out the length of the group cn so it can be extracted into 'group'
 			pos=0;
 			while(values[i][3+pos++] != ',') ;
-			snprintf(group, pos, "%s", values[i]+3);
+			if(0 > snprintf(group, pos, "%s", values[i]+3)) return 0;
 
 			// search on ldap whether user dn is a member of the group
-			snprintf(filter, MYLEN, "(&(objectclass=*)(cn=%s)(member=%s))", group, dn);
+			if(0 > snprintf(filter, MYLEN, "(&(objectclass=*)(cn=%s)(member=%s))", group, dn)) return 0;
 			if( (retval=ldap_search_s(ld, groupbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) == LDAP_SUCCESS) {
 				if( ldap_count_entries(ld, msg) > 0 ) {
 					//printf("MATCH SVC %s on group %s\n", dn, values[i]);
@@ -89,7 +89,6 @@ int hbac_check_memberservice(LDAP* ld, const char* base, LDAPMessage* entry, cha
 	return found;
 }
 
-
 int hbac_check_memberhost(LDAP* ld, const char* base, LDAPMessage* entry, char* attr, const char* name) {
 	int i,pos,retval;
 	char** values=NULL;
@@ -103,8 +102,8 @@ int hbac_check_memberhost(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 	LDAPMessage* msg=NULL;
 
 	// create the user DN to match and the group base
-	snprintf(dn, MYLEN, "fqdn=%s,cn=computers,cn=accounts,%s", name, base);
-	snprintf(groupbase, MYLEN, "cn=hostgroups,cn=accounts,%s", base);
+	if(0 > snprintf(dn, MYLEN, "fqdn=%s,cn=computers,cn=accounts,%s", (char*)name, (char*)base)) return 0;
+	if(0 > snprintf(groupbase, MYLEN, "cn=hostgroups,cn=accounts,%s", (char*)base)) return 0;
 	values = ldap_get_values(ld, entry, attr);
 	for(i=0; values[i] != NULL; i++) {
 		index=strstr(values[i], "cn=hostgroups");
@@ -112,10 +111,10 @@ int hbac_check_memberhost(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 			// find out the length of the group cn so it can be extracted into 'group'
 			pos=0;
 			while(values[i][3+pos++] != ',') ;
-			snprintf(group, pos, "%s", values[i]+3);
+			if(0 > snprintf(group, pos, "%s", values[i]+3)) return 0;
 
 			// search on ldap whether user dn is a member of the group
-			snprintf(filter, MYLEN, "(&(objectclass=ipahostgroup)(cn=%s)(member=%s))", group, dn);
+			if(0 > snprintf(filter, MYLEN, "(&(objectclass=ipahostgroup)(cn=%s)(member=%s))", group, dn)) return 0;
 			if( (retval=ldap_search_s(ld, groupbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) == LDAP_SUCCESS) {
 				if( ldap_count_entries(ld, msg) > 0 ) {
 					//printf("MATCH HOST %s on group %s\n", dn, values[i]);
@@ -149,8 +148,8 @@ int hbac_check_memberuser(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 	LDAPMessage* msg=NULL;
 
 	// create the user DN to match and the group base
-	snprintf(dn, MYLEN, "uid=%s,cn=users,cn=accounts,%s", name, base);
-	snprintf(groupbase, MYLEN, "cn=groups,cn=accounts,%s", base);
+	if(0 > snprintf(dn, MYLEN, "uid=%s,cn=users,cn=accounts,%s", (char*)name, (char*)base)) return 0;
+	if(0 > snprintf(groupbase, MYLEN, "cn=groups,cn=accounts,%s", (char*)base)) return 0;
 	values = ldap_get_values(ld, entry, attr);
 	for(i=0; values[i] != NULL; i++) {
 		index=strstr(values[i], "cn=groups");
@@ -158,10 +157,10 @@ int hbac_check_memberuser(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 			// find out the length of the group cn so it can be extracted into 'group'
 			pos=0;
 			while(values[i][3+pos++] != ',') ;
-			snprintf(group, pos, "%s", values[i]+3);
+			if(0 > snprintf(group, pos, "%s", values[i]+3)) return 0;
 
 			// search on ldap whether user dn is a member of the group
-			snprintf(filter, MYLEN, "(&(objectclass=posixgroup)(cn=%s)(member=%s))", group, dn);
+			if(0 > snprintf(filter, MYLEN, "(&(objectclass=posixgroup)(cn=%s)(member=%s))", group, dn)) return 0;
 			if( (retval=ldap_search_s(ld, groupbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) == LDAP_SUCCESS) {
 				if( ldap_count_entries(ld, msg) > 0 ) {
 					//printf("MATCH USER %s on group %s\n", dn, values[i]);
@@ -243,7 +242,7 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 
 // ldapsearch -H ldaps://server/ -Z -D 'cn=directory manager' -W -b cn=hbac,dc=domain... '(&(objectclass=ipahbacrule)(ipaenabledflag=true)(accessruletype=allow))' memberuser memberhost memberservice
 
-	snprintf(hbacbase, MYLEN, "cn=hbac,%s", base);
+	if(0 > snprintf(hbacbase, MYLEN, "cn=hbac,%s", (char*)base)) return 0;
 	if( (retval=ldap_search_s(ld, hbacbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) != LDAP_SUCCESS) {
 		printf("Error in LDAP search: %s\n", ldap_err2string(retval));
 		ldap_unbind_s(ld);
@@ -461,9 +460,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 		return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 	}
 
-	retval = snprintf(sysaccount, LEN-1, "uid=%s,cn=sysaccounts,cn=etc,%s", binduser, base);
-
-	if( retval <= 0 ) {
+	if( 0 > snprintf(sysaccount, LEN-1, "uid=%s,cn=sysaccounts,cn=etc,%s", binduser, base) ) {
 		printf("ERROR: failure defining the sysaccount for %s in %s\n", binduser, base);
 		return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 	}
