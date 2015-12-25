@@ -39,6 +39,10 @@ extern char ** ldap_get_values(	LDAP *ld, LDAPMessage *entry, char *attrs );
 extern int ldap_bind_s(LDAP *ld, const char *who, const char *cred, int method);
 extern int ldap_unbind_s(LDAP *ld);
 
+int ldap_search_s(LDAP *ld, const char *base, int scope, const char *filter, char **attrs, int attrsonly, LDAPMessage **msg) {
+	return ldap_search_ext_s(ld, base, scope, filter, attrs, attrsonly, NULL, NULL, NULL, 0, msg);
+}
+
 int hbac_check_memberservice(LDAP* ld, const char* base, LDAPMessage* entry, char* attr, const char* name) {
 	int i,pos,retval;
 	char** values=NULL;
@@ -65,15 +69,13 @@ int hbac_check_memberservice(LDAP* ld, const char* base, LDAPMessage* entry, cha
 
 			// search on ldap whether user dn is a member of the group
 			snprintf(filter, MYLEN, "(&(objectclass=*)(cn=%s)(member=%s))", group, dn);
-			if( (retval=ldap_search_s(ld, groupbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) != LDAP_SUCCESS) {
-				printf("Error in LDAP search: %s\n", ldap_err2string(retval));
-				ldap_unbind_s(ld);
-				return 0;
-			}
-			if( ldap_count_entries(ld, msg) > 0 ) {
-				//printf("MATCH SVC %s on group %s\n", dn, values[i]);
-				found=1;
-			}
+			if( (retval=ldap_search_s(ld, groupbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) == LDAP_SUCCESS) {
+				if( ldap_count_entries(ld, msg) > 0 ) {
+					//printf("MATCH SVC %s on group %s\n", dn, values[i]);
+					found=1;
+				}
+			} else { printf("Error in LDAP search: %s\n", ldap_err2string(retval)); }
+			if(msg != NULL) ldap_msgfree(msg);
 		} else {
 			index=strstr(values[i], "cn=hbacservices");
 			if(index && strncmp(values[i], dn, MYLEN) == 0 ) {
@@ -114,15 +116,13 @@ int hbac_check_memberhost(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 
 			// search on ldap whether user dn is a member of the group
 			snprintf(filter, MYLEN, "(&(objectclass=ipahostgroup)(cn=%s)(member=%s))", group, dn);
-			if( (retval=ldap_search_s(ld, groupbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) != LDAP_SUCCESS) {
-				printf("Error in LDAP search: %s\n", ldap_err2string(retval));
-				ldap_unbind_s(ld);
-				return 0;
-			}
-			if( ldap_count_entries(ld, msg) > 0 ) {
-				//printf("MATCH HOST %s on group %s\n", dn, values[i]);
-				found=1;
-			}
+			if( (retval=ldap_search_s(ld, groupbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) == LDAP_SUCCESS) {
+				if( ldap_count_entries(ld, msg) > 0 ) {
+					//printf("MATCH HOST %s on group %s\n", dn, values[i]);
+					found=1;
+				}
+			} else { printf("Error in LDAP search: %s\n", ldap_err2string(retval)); }
+			if(msg != NULL) ldap_msgfree(msg);
 		} else {
 			index=strstr(values[i], "cn=computers");
 			if(index && strncmp(values[i], dn, MYLEN) == 0 ) {
@@ -162,15 +162,14 @@ int hbac_check_memberuser(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 
 			// search on ldap whether user dn is a member of the group
 			snprintf(filter, MYLEN, "(&(objectclass=posixgroup)(cn=%s)(member=%s))", group, dn);
-			if( (retval=ldap_search_s(ld, groupbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) != LDAP_SUCCESS) {
-				printf("Error in LDAP search: %s\n", ldap_err2string(retval));
-				ldap_unbind_s(ld);
-				return 0;
-			}
-			if( ldap_count_entries(ld, msg) > 0 ) {
-				//printf("MATCH USER %s on group %s\n", dn, values[i]);
-				found=1;
-			}
+			if( (retval=ldap_search_s(ld, groupbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) == LDAP_SUCCESS) {
+				if( ldap_count_entries(ld, msg) > 0 ) {
+					//printf("MATCH USER %s on group %s\n", dn, values[i]);
+					found=1;
+				}
+			} else { printf("Error in LDAP search: %s\n", ldap_err2string(retval)); }
+
+			if(msg != NULL) ldap_msgfree(msg);
 		} else {
 			index=strstr(values[i], "cn=users");
 			if(index && strncmp(values[i], dn, MYLEN) == 0 ) {
