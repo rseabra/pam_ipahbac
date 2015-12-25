@@ -27,7 +27,7 @@ You can check sample.pam included for more details about configuring the module,
 
 Options
 -------
-* blameGetOpt is only needed in GNU/Linux, getopt expects argv[0] to be the command. Not needed in Solaris
+* blameGetOpt is only needed in GNU/Linux, getopt expects argv[0] to be the command. Not needed in Solaris, it works differently there. (Why use getopt?... well... why have the trouble of parsing options myself?)
 * `-b BASE` is mandatory, the IPA domain base
 * `-u USER` is mandatory, an IPA sysaccount but only the uid value is needed, the rest is derived from the base
 * `-p PASS` or `-P path` is mandatory, as you'll need the sysaccount's password. The second form reads the whole first line of bytes as the password, including newline if present
