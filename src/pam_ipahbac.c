@@ -31,22 +31,24 @@
 
 #include <ldap.h>
 
+#define MYLEN 1024
+
 #ifdef HAVE_LDAP_H
 int hbac_check_memberservice(LDAP* ld, const char* base, LDAPMessage* entry, char* attr, const char* name) {
 	int i,pos,retval;
 	char** values=NULL;
-	char dn[1024];
+	char dn[MYLEN];
 	int found=0;
-	char groupbase[1024];
-	char filter[1024];
+	char groupbase[MYLEN];
+	char filter[MYLEN];
 	char* attrs[] = { "member", NULL } ;
-	char group[1024];
+	char group[MYLEN];
 	char* index=NULL;
 	LDAPMessage* msg=NULL;
 
 	// create the user DN to match and the group base
-	snprintf(dn, 1024, "cn=%s,cn=hbacservices,cn=hbac,%s", name, base);
-	snprintf(groupbase, 1024, "cn=hbacservicegroups,cn=hbac,%s", base);
+	snprintf(dn, MYLEN, "cn=%s,cn=hbacservices,cn=hbac,%s", name, base);
+	snprintf(groupbase, MYLEN, "cn=hbacservicegroups,cn=hbac,%s", base);
 	values = ldap_get_values(ld, entry, attr);
 	for(i=0; values[i] != NULL; i++) {
 		index=strstr(values[i], "cn=hbacservicegroups");
@@ -57,7 +59,7 @@ int hbac_check_memberservice(LDAP* ld, const char* base, LDAPMessage* entry, cha
 			snprintf(group, pos, "%s", values[i]+3);
 
 			// search on ldap whether user dn is a member of the group
-			snprintf(filter, 1024, "(&(objectclass=*)(cn=%s)(member=%s))", group, dn);
+			snprintf(filter, MYLEN, "(&(objectclass=*)(cn=%s)(member=%s))", group, dn);
 			if( (retval=ldap_search_s(ld, groupbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) != LDAP_SUCCESS) {
 				printf("Error in LDAP search: %s\n", ldap_err2string(retval));
 				ldap_unbind_s(ld);
@@ -69,7 +71,7 @@ int hbac_check_memberservice(LDAP* ld, const char* base, LDAPMessage* entry, cha
 			}
 		} else {
 			index=strstr(values[i], "cn=hbacservices");
-			if(index && strncmp(values[i], dn, 1024) == 0 ) {
+			if(index && strncmp(values[i], dn, MYLEN) == 0 ) {
 				//printf("MATCH SVC %s\n", dn);
 				found=1;
 			}
@@ -84,18 +86,18 @@ int hbac_check_memberservice(LDAP* ld, const char* base, LDAPMessage* entry, cha
 int hbac_check_memberhost(LDAP* ld, const char* base, LDAPMessage* entry, char* attr, const char* name) {
 	int i,pos,retval;
 	char** values=NULL;
-	char dn[1024];
+	char dn[MYLEN];
 	int found=0;
-	char groupbase[1024];
-	char filter[1024];
+	char groupbase[MYLEN];
+	char filter[MYLEN];
 	char* attrs[] = { "member", NULL } ;
-	char group[1024];
+	char group[MYLEN];
 	char* index=NULL;
 	LDAPMessage* msg=NULL;
 
 	// create the user DN to match and the group base
-	snprintf(dn, 1024, "fqdn=%s,cn=computers,cn=accounts,%s", name, base);
-	snprintf(groupbase, 1024, "cn=hostgroups,cn=accounts,%s", base);
+	snprintf(dn, MYLEN, "fqdn=%s,cn=computers,cn=accounts,%s", name, base);
+	snprintf(groupbase, MYLEN, "cn=hostgroups,cn=accounts,%s", base);
 	values = ldap_get_values(ld, entry, attr);
 	for(i=0; values[i] != NULL; i++) {
 		index=strstr(values[i], "cn=hostgroups");
@@ -106,7 +108,7 @@ int hbac_check_memberhost(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 			snprintf(group, pos, "%s", values[i]+3);
 
 			// search on ldap whether user dn is a member of the group
-			snprintf(filter, 1024, "(&(objectclass=ipahostgroup)(cn=%s)(member=%s))", group, dn);
+			snprintf(filter, MYLEN, "(&(objectclass=ipahostgroup)(cn=%s)(member=%s))", group, dn);
 			if( (retval=ldap_search_s(ld, groupbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) != LDAP_SUCCESS) {
 				printf("Error in LDAP search: %s\n", ldap_err2string(retval));
 				ldap_unbind_s(ld);
@@ -118,7 +120,7 @@ int hbac_check_memberhost(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 			}
 		} else {
 			index=strstr(values[i], "cn=computers");
-			if(index && strncmp(values[i], dn, 1024) == 0 ) {
+			if(index && strncmp(values[i], dn, MYLEN) == 0 ) {
 				//printf("MATCH HOST %s\n", dn);
 				found=1;
 			}
@@ -132,18 +134,18 @@ int hbac_check_memberhost(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 int hbac_check_memberuser(LDAP* ld, const char* base, LDAPMessage* entry, char* attr, const char* name) {
 	int i,pos,retval;
 	char** values=NULL;
-	char dn[1024];
+	char dn[MYLEN];
 	int found=0;
-	char groupbase[1024];
-	char filter[1024];
+	char groupbase[MYLEN];
+	char filter[MYLEN];
 	char* attrs[] = { "member", NULL } ;
-	char group[1024];
+	char group[MYLEN];
 	char* index=NULL;
 	LDAPMessage* msg=NULL;
 
 	// create the user DN to match and the group base
-	snprintf(dn, 1024, "uid=%s,cn=users,cn=accounts,%s", name, base);
-	snprintf(groupbase, 1024, "cn=groups,cn=accounts,%s", base);
+	snprintf(dn, MYLEN, "uid=%s,cn=users,cn=accounts,%s", name, base);
+	snprintf(groupbase, MYLEN, "cn=groups,cn=accounts,%s", base);
 	values = ldap_get_values(ld, entry, attr);
 	for(i=0; values[i] != NULL; i++) {
 		index=strstr(values[i], "cn=groups");
@@ -154,7 +156,7 @@ int hbac_check_memberuser(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 			snprintf(group, pos, "%s", values[i]+3);
 
 			// search on ldap whether user dn is a member of the group
-			snprintf(filter, 1024, "(&(objectclass=posixgroup)(cn=%s)(member=%s))", group, dn);
+			snprintf(filter, MYLEN, "(&(objectclass=posixgroup)(cn=%s)(member=%s))", group, dn);
 			if( (retval=ldap_search_s(ld, groupbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) != LDAP_SUCCESS) {
 				printf("Error in LDAP search: %s\n", ldap_err2string(retval));
 				ldap_unbind_s(ld);
@@ -166,7 +168,7 @@ int hbac_check_memberuser(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 			}
 		} else {
 			index=strstr(values[i], "cn=users");
-			if(index && strncmp(values[i], dn, 1024) == 0 ) {
+			if(index && strncmp(values[i], dn, MYLEN) == 0 ) {
 				//printf("MATCH USER %s\n", dn);
 				found=1;
 			}
@@ -186,7 +188,7 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 	int matchsvc=0;
 	int retval=0;
 
-	char hbacbase[1024];
+	char hbacbase[MYLEN];
 	const char* filter="(&(objectclass=ipahbacrule)(ipaenabledflag=true)(accessruletype=allow))";
 	char* attrs[] = { "memberuser", "memberhost", "memberservice", NULL } ;
 	int ldap_version=LDAP_VERSION3;
@@ -237,7 +239,7 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 
 // ldapsearch -H ldaps://server/ -Z -D 'cn=directory manager' -W -b cn=hbac,dc=domain... '(&(objectclass=ipahbacrule)(ipaenabledflag=true)(accessruletype=allow))' memberuser memberhost memberservice
 
-	snprintf(hbacbase, 1024, "cn=hbac,%s", base);
+	snprintf(hbacbase, MYLEN, "cn=hbac,%s", base);
 	if( (retval=ldap_search_s(ld, hbacbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) != LDAP_SUCCESS) {
 		printf("Error in LDAP search: %s\n", ldap_err2string(retval));
 		ldap_unbind_s(ld);
