@@ -34,6 +34,11 @@
 #define MYLEN 1024
 
 #ifdef HAVE_LDAP_H
+// shutup some idiot warnings from -Wall ;)
+extern char ** ldap_get_values(	LDAP *ld, LDAPMessage *entry, char *attrs );
+extern int ldap_bind_s(LDAP *ld, const char *who, const char *cred, int method);
+extern int ldap_unbind_s(LDAP *ld);
+
 int hbac_check_memberservice(LDAP* ld, const char* base, LDAPMessage* entry, char* attr, const char* name) {
 	int i,pos,retval;
 	char** values=NULL;
@@ -350,13 +355,17 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 #if defined(SOLARIS_BUILD) || defined(AIX_BUILD)
 	char* username=NULL;
 	char* svcname=NULL;
+	int gotkeydb=0;
 #endif
 #ifdef GNULINUX_BUILD
 	const char* username=NULL;
 	const char* svcname=NULL;
 #endif
 	char sysaccount[LEN];
-	int gotuser=0,gotpass=0,gotbase=0,gotservers=0,gotkeydb=0,len=0;
+	int gotuser=0;
+	int gotpass=0;
+	int gotbase=0;
+	int gotservers=0;
 
 	retval = pam_get_user(pamh, &username, "Username: ");
 	if (retval != PAM_SUCCESS) {
@@ -396,21 +405,19 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 					printf("Error opening bindpw from %s: %s\n", optarg, strerror(errno));
 					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 				}
-				len=LEN*sizeof(char);
-				bindpw=malloc(len);
+				bindpw=malloc(LEN);
 				if(!bindpw) {
 					printf("Not enough memory to create bindpw buffer: %s\n", strerror(errno));
 					fclose(bindpwfile);
 					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 				}
-				memset(bindpw, 0, len);
-				if(!fgets(bindpw, len, bindpwfile)) {
+				memset(bindpw, 0, LEN);
+				if(!fgets(bindpw, LEN, bindpwfile)) {
 					printf("Error reading bindpw from %s: %s\n", optarg, strerror(errno));
 					fclose(bindpwfile);
 					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 				}
 				fclose(bindpwfile);
-				printf("Got password: '%s'\n", bindpw);
 				gotpass=1;
 				break;
 			case 'b':
@@ -429,6 +436,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 				}
 				gotservers=1;
 				break;
+#ifdef SOLARIS_BUILD
 			case 'k':
 				keydb=strndup(optarg, LEN-1);
 				if(!keydb) {
@@ -437,6 +445,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 				}
 				gotkeydb=1;
 				break;
+#endif
 			case 'x':
 				if(check_exceptions(optarg, username) ) {
 					return free_and_return(PAM_SUCCESS, binduser, bindpw, base, ldapservers, keydb);
@@ -445,6 +454,9 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 		}
 	}
 
+#ifdef SOLARIS_BUILD
+	if( ! (gotuser && gotpass && gotbase && gotservers && gotkeydb) ) {
+#endif
 	if( ! (gotuser && gotpass && gotbase && gotservers ) ) {
 		printf("ERROR: missing -u, -p, -b or -l parameters (%d,%d,%d,%d). Please RTFM.\n", gotuser, gotpass, gotbase, gotservers);
 		return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
