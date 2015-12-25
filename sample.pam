@@ -3,11 +3,11 @@
 # blameGetOpt is any token you may want, it's necessary because getopt
 # in GNU/Linux requires it to be the command path and it won't parse
 # options properly if it doesn't exist.
-auth       required     pam_ipahbac.so blameGetOpt -u USER -b LDAP_DOMAIN -p PASSWORD -l COMMA,SEPERATED,LDAPS,URIs
-account    required     pam_ipahbac.so blameGetOpt -u USER -b LDAP_DOMAIN -p PASSWORD -l COMMA,SEPERATED,LDAPS,URIs
+auth       required     pam_ipahbac.so blameGetOpt -u USER -b LDAP_DOMAIN -P /etc/ldap.secret -l COMMA,SEPERATED,LDAPS,URIs
+account    required     pam_ipahbac.so blameGetOpt -u USER -b LDAP_DOMAIN -P /etc/ldap.secret -l COMMA,SEPERATED,LDAPS,URIs
 
 # For Solaris
 # getopt doesn't work the same way, and the ldap connection needs to be
 # done with hostname:port pairs rather than ldaps:// URIs
-auth       required     pam_ipahbac.so -u USER -b LDAP_DOMAIN -p PASSWORD -l COMMA,SEPERATED,hostname:port,PARIS -k /PATH/TO/NSSDB
-account    required     pam_ipahbac.so -u USER -b LDAP_DOMAIN -p PASSWORD -l COMMA,SEPERATED,hostname:port,PARIS -k /PATH/TO/NSSDB
+auth       required     pam_ipahbac.so -u USER -b LDAP_DOMAIN -P /etc/ldap.secret -l COMMA,SEPERATED,hostname:port,PARIS -k /PATH/TO/NSSDB
+account    required     pam_ipahbac.so -u USER -b LDAP_DOMAIN -P /etc/ldap.secret -l COMMA,SEPERATED,hostname:port,PARIS -k /PATH/TO/NSSDB
