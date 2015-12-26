@@ -3,7 +3,7 @@
 Intro
 =====
 
-This is just a simple PAM module to implement FreeIPA HBAC for systems that don't support it, like AIX and Solaris.
+This is just a simple PAM module to implement FreeIPA's HBAC for systems that don't support it, like AIX and Solaris. The logo is a play with the concept of plugging in the missing piece.
 
 To build, either use the build scripts or use these commands:
 
