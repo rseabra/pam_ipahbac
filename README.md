@@ -1,4 +1,4 @@
-![FreeIPA logo](https://www.freeipa.org/images/freeipa/freeipa-logo-small.png)
+![IPA HBAC logo](ipahbac.png)
 
 Intro
 =====
