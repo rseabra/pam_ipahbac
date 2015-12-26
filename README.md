@@ -3,15 +3,20 @@
 Intro
 =====
 
-This is just a simple PAM module to implement FreeIPA's HBAC for systems that don't support it, like AIX and Solaris. The logo is a play with the concept of plugging in the missing piece.
+AIX supports it's own two LDAP attributes, per user: one which lists hosts where the user is allowed to login, and another of hosts where he is forbidden to.
 
-To build, either use the build scripts or use these commands:
+Solaris has just one, for allowed hosts.
+
+Both are unmaintanable messes per user, not the elegancy of FreeIPA's HBAC controls, they both _miss_ the concept of flexible control of user access to hosts and services.
+
+This is just a simple PAM module that aims to implement FreeIPA's HBAC for systems that don't support it, like AIX and Solaris, or for systems that want to support it without a full FreeIPA client stack.
+
+The logo is a play with the concept of _plugging in the missing piece_.
 
 **Building the PAM module**
 
-	export CC=/opt/IBM/xlc/13.1.0/bin/xlc # AIX only
-	export OBJECT_MODE=64 # AIX only
-	
+To build, either use the build scripts or use these commands:
+
 	./configure --prefix=/usr
 	make
 	sudo make install
@@ -41,6 +46,7 @@ Known Issues
 Although it's oriented towards Solaris, AIX and non SSSD GNU/Linux systems or commands, so far it has only been tested in :
 * Fedora 23
 * Solaris 11.3
+* AIX 7.1 (not really, yet, it's in the works)
 
 Resources
 =========
