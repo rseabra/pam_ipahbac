@@ -43,11 +43,10 @@ int ldap_search_s(LDAP *ld, const char *base, int scope, const char *filter, cha
 
 // yes, only supports ASCII for now
 int is_dangerous_char(int c) {
-	if(	(45 <= c && c <= 46) ||	// - and .
-		(48 <= c && c <= 57) ||	// digits
+	if(	(44 <= c && c <= 58) ||	// , - . / digits and :
 		(64 <= c && c <= 90) ||	// @ and A-Z
 		(97 <= c && c <= 122) || // a-z
-		(95 == c) || (47 == c)	// _ and /
+		(95 == c) || (61 == c)	// _ and =
 	  ) return 0;
 	return 1;
 }
@@ -404,9 +403,9 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 
 	optind=0;
 	while( (opt = getopt(argc, (char * const*)argv, "k:u:p:P:b:l:x:") ) != -1 ) {
-		if(dangerous_str(optarg)) free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 		switch(opt) {
 			case 'u':
+				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 				binduser=strndup(optarg, LEN-1);
 				if(!binduser) {
 					printf("Error reading binduser %s: %s\n", optarg, strerror(errno));
@@ -415,6 +414,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 				gotuser=1;
 				break;
 			case 'p':
+				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 				bindpw=strndup(optarg, LEN-1);
 				if(!bindpw) {
 					printf("Error reading bindpw %s: %s\n", optarg, strerror(errno));
@@ -423,6 +423,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 				gotpass=1;
 				break;
 			case 'P':
+				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 				bindpwfile=fopen(optarg, "r");
 				if(!bindpwfile) {
 					printf("Error opening bindpw from %s: %s\n", optarg, strerror(errno));
@@ -444,6 +445,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 				gotpass=1;
 				break;
 			case 'b':
+				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 				base=strndup(optarg, LEN-1);
 				if(!base) {
 					printf("Error reading base %s: %s\n", optarg, strerror(errno));
@@ -452,6 +454,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 				gotbase=1;
 				break;
 			case 'l':
+				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 				ldapservers=strndup(optarg, LEN-1);
 				if(!ldapservers) {
 					printf("Error reading ldapservers %s: %s\n", optarg, strerror(errno));
@@ -461,6 +464,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 				break;
 #ifdef SOLARIS_BUILD
 			case 'k':
+				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 				keydb=strndup(optarg, LEN-1);
 				if(!keydb) {
 					printf("Error reading keydb %s: %s\n", optarg, strerror(errno));
@@ -470,6 +474,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 				break;
 #endif
 			case 'x':
+				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 				if(check_exceptions(optarg, username) ) {
 					return free_and_return(PAM_SUCCESS, binduser, bindpw, base, ldapservers, keydb);
 				}
