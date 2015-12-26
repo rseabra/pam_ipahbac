@@ -404,6 +404,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 
 	optind=0;
 	while( (opt = getopt(argc, (char * const*)argv, "k:u:p:P:b:l:x:") ) != -1 ) {
+		if(dangerous_str(optarg)) free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 		switch(opt) {
 			case 'u':
 				binduser=strndup(optarg, LEN-1);
