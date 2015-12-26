@@ -51,28 +51,22 @@ Although it's oriented towards Solaris, AIX and non SSSD GNU/Linux systems or co
 Resources
 =========
 
+I found these resources especially helpful.
+
 Beat Gammit's Simple PAM
 ------------------------
 
 I forked Beat Gammit's simple example as basis for start. You can find it here: https://github.com/beatgammit/simple-pam
 
-I found these resources especially helpful:
-
-O'Reilly Guides:
-----------------
+Guides
+------
 
 These guides give brief overviews about PAM and how to write modules.  This is useful if you already have a little knowledge.
 
 * [Writing PAM Modules, Part One](http://linuxdevcenter.com/pub/a/linux/2002/05/02/pam_modules.html)
 * [Writing PAM Modules, Part Two](http://linuxdevcenter.com/pub/a/linux/2002/05/23/pam_modules.html)
 * [Writing PAM Modules, Part Three](http://linuxdevcenter.com/pub/a/linux/2002/05/30/pam_modules.html)
-
-Others
-------
-
-Good example for simple authentication.  I adapted this one in my simple PAM module.
-
-[2-factor authentication & writing PAM modules](http://ben.akrin.com/?p=1068)
+* [2-factor authentication & writing PAM modules](http://ben.akrin.com/?p=1068)
 
 License
 =======
