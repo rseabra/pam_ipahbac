@@ -11,5 +11,7 @@ MAINTAINERCLEANFILES = \
 ACLOCAL_AMFLAGS = -I m4
 
 EXTRA_DIST =		\
+	ipahbac.png	\
+	ipahbac.svg	\
 	config.rpath	\
 	m4/ChangeLog
