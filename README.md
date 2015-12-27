@@ -40,13 +40,14 @@ Options
 * `-k path` is mandatory **in Solaris**; it's the path to the NSSDB that OpenLDAP is using.
 * `-x path` is an optional file with a line separated list of users who will be immediately accepted (useful for root and application accounts).
 
-Known Issues
-------------
+Status
+------
 
-Although it's oriented towards Solaris, AIX and non SSSD GNU/Linux systems or commands, so far it has only been tested in :
-* Fedora 23
-* Solaris 11.3
-* AIX 7.1 (not really, yet, it's in the works)
+| OS | Status | Observations |
+| -- |:------:| ------------:|
+| Fedora 23 | Done | |
+| Solaris 11.3 | Done | Remember to compile in 64 and 32 bits... |
+| AIX 7.1 | Compiles | Untested due to lack of time, but I decided to not bother with AIX LDAP and just use OpenLDAP, which is a requirement for sudo with LDAP support anyway, so it will be there for sure |
 
 Resources
 =========
