@@ -1,7 +1,7 @@
-<img src='ipahbac.png' align='right' width='30%' height='30%' alt="PAM IPA HBAC logo"/>
-
 Intro
 =====
+
+<img src='ipahbac.png' align='right' width='30%' height='30%' alt="PAM IPA HBAC logo"/>
 
 AIX supports it's own two LDAP attributes, per user: one which lists hosts where the user is allowed to login, and another of hosts where he is forbidden to.
 
