@@ -1,4 +1,4 @@
-![IPA HBAC logo](ipahbac.png)
+<img src='ipahbac.png' style='float: right; width: 50%; height: 50%;' alt="PAM IPA HBAC logo"/>
 
 Intro
 =====
