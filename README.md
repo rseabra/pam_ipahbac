@@ -1,4 +1,4 @@
-<img src='ipahbac.png' align='right' width='50%' height='50%' alt="PAM IPA HBAC logo"/>
+<img src='ipahbac.png' align='right' width='30%' height='30%' alt="PAM IPA HBAC logo"/>
 
 Intro
 =====
