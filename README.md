@@ -43,8 +43,8 @@ Options
 Status
 ------
 
-| OS | Status | Observations |
-| -- |:------:| ------------:|
+| OS  | Status | Observations |
+| --- |:------:| ------------ |
 | Fedora 23 | Done | |
 | Solaris 11.3 | Done | Remember to compile in 64 and 32 bits... |
 | AIX 7.1 | Compiles | Untested due to lack of time, but I decided to not bother with AIX LDAP and just use OpenLDAP, which is a requirement for sudo with LDAP support anyway, so it will be there for sure |
