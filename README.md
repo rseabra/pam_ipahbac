@@ -64,7 +64,7 @@ Guides
 
 These guides give brief overviews about PAM and how to write modules.  This is useful if you already have a little knowledge.
 
-* Oreilly's Writing PAM Modules, Parts [One](http://linuxdevcenter.com/pub/a/linux/2002/05/02/pam_modules.html) * [Two](http://linuxdevcenter.com/pub/a/linux/2002/05/23/pam_modules.html) and [Three](http://linuxdevcenter.com/pub/a/linux/2002/05/30/pam_modules.html)
+* Oreilly's _Writing PAM Modules_, parts [One](http://linuxdevcenter.com/pub/a/linux/2002/05/02/pam_modules.html) * [Two](http://linuxdevcenter.com/pub/a/linux/2002/05/23/pam_modules.html) and [Three](http://linuxdevcenter.com/pub/a/linux/2002/05/30/pam_modules.html)
 * [2-factor authentication & writing PAM modules](http://ben.akrin.com/?p=1068)
 
 License
