@@ -27,15 +27,9 @@
 
 #include <config.h>
 
-#include "pam_ipahbac.h"
-
 #include <ldap.h>
 
-#ifdef HAVE_LDAP_H
-// shutup some idiot warnings from -Wall ;)
-extern char ** ldap_get_values(	LDAP *ld, LDAPMessage *entry, char *attrs );
-extern int ldap_bind_s(LDAP *ld, const char *who, const char *cred, int method);
-extern int ldap_unbind_s(LDAP *ld);
+#include "pam_ipahbac.h"
 
 int ldap_search_s(LDAP *ld, const char *base, int scope, const char *filter, char **attrs, int attrsonly, LDAPMessage **msg) {
 	return ldap_search_ext_s(ld, base, scope, filter, attrs, attrsonly, NULL, NULL, NULL, 0, msg);
@@ -304,8 +298,6 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 	ldap_unbind_s(ld);
 	return 0;
 }
-
-#endif
 
 int free_and_return(int retval, char* binduser, char* bindpw, char* base, char* ldapservers, char* keydb) {
 	if(binduser) free(binduser);
