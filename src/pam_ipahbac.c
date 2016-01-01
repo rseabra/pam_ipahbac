@@ -36,7 +36,7 @@ int ldap_search_s(LDAP *ld, const char *base, int scope, const char *filter, cha
 }
 
 // yes, only supports ASCII for now
-int is_dangerous_char(int c) {
+int is_dangerous_char(char c) {
 	if(	(44 <= c && c <= 58) ||	// , - . / digits and :
 		(64 <= c && c <= 90) ||	// @ and A-Z
 		(97 <= c && c <= 122) || // a-z
@@ -47,15 +47,16 @@ int is_dangerous_char(int c) {
 
 // yes, only supports ASCII for now
 int dangerous_str(char* str) {
-	int i;
-	int length = strlen(str);
+	size_t i;
+	size_t length = strlen(str);
 	if(length >= LEN) return 0;
 	//printf("Length of %s is %d\n", str, length);
-	for(i=0; i < length; i++)
-		if(is_dangerous_char((int)str[i])) {
+	for(i=0; i < length; i++) {
+		if(is_dangerous_char(str[i])) {
 			//printf("DANGER with %d!\n", str[i]);
 			return 1;
 		}
+	}
 	return 0;
 }
 
