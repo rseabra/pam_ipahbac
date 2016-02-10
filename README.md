@@ -47,7 +47,7 @@ Status
 | --- |:------:| ------------ |
 | Fedora 23 | Done | |
 | Solaris 11.3 | Done | Remember to compile in 64 and 32 bits... |
-| AIX 7.1 | Compiles | Untested due to lack of time, but I decided to not bother with AIX LDAP and just use OpenLDAP, which is a requirement for sudo with LDAP support anyway, so it will be there for sure |
+| AIX 6.1/7.1 | Compiles | Being seriously tested. Compiles but there are issues (eg, -lldap is missing from the linker, which might have been fixed by recent changes), working on it. I decided to not care about IDSLDAP and just use OpenLDAP, which is sort of a requirement for sudo with LDAP support anyway, so it will be there for sure |
 
 Resources
 =========
