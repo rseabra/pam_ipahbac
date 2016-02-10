@@ -218,7 +218,7 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 	char* attr=NULL;
 	BerElement* ber=NULL;
 
-#if defined(SOLARIS_BUILD) || defined(AIX_BUILD)
+#if defined(SOLARIS_BUILD)
 
 # define LDAP_OPT_SUCCESS LDAP_SUCCESS
 
