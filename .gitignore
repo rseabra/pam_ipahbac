@@ -26,3 +26,6 @@ src/ipahbac_test
 src/ipahbac_test-test.o
 stamp-h1
 .*.swp
+*.gz
+*.xz
+*.bz2
