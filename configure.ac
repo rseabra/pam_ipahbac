@@ -49,27 +49,19 @@ case "$host_os" in
 		AC_SUBST(WARNINGS,["-Wall"])
 		AC_SUBST(STACKPROT,["-fstack-protector"])
 		AC_DEFINE([SOLARIS_BUILD], [1], [Whether to build against Solaris])
-		AC_SUBST(XLCFLAGS,[""])
 	;;
 	*aix*)
 		AC_SUBST(pammisc,[])
 		AC_DEFINE([AIX_BUILD], [1], [Whether to build against Solaris])
 
 		AC_SUBST(WARNINGS,[""])
-		AC_SUBST(XLCFLAGS,["-q64"])
 	;;
 	*)
 		AC_SUBST(WARNINGS,["-Wall"])
 		AC_SUBST(STACKPROT,["-fstack-protector-strong"])
-		AC_SUBST(XLCFLAGS,[""])
 		AC_DEFINE([GNULINUX_BUILD], [1], [Whether to build against a GNU/Linux system [default]])
 	;;
 esac
-
-AC_ARG_ENABLE([hbaccfg], [AS_HELP_STRING([--enable-hbaccfg],
-              [Location to install the pam module ($sysconfdir/ipa-hbac.conf)])],
-              [hbaccfg=$enableval], [hbaccfg=$sysconfdir/ipa-hbac.conf])
-AC_SUBST(hbaccfg)
 
 LIBDIR=`eval echo $LIBDIR`
 AC_SUBST([LIBDIR])

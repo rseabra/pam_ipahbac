@@ -3,7 +3,7 @@ MAINTAINERCLEANFILES = Makefile.in
 bin_PROGRAMS = ipahbac_test
 
 ipahbac_test_SOURCES = test.c
-ipahbac_test_CFLAGS = @XLCFLAGS@
+ipahbac_test_CFLAGS = 
 ipahbac_test_LDFLAGS = -lpam @pammisc@
 
 
@@ -12,7 +12,7 @@ moduledir = @pamdir@
 module_LTLIBRARIES = pam_ipahbac.la
 
 pam_ipahbac_la_SOURCES = pam_ipahbac.c pam_ipahbac.h
-pam_ipahbac_la_CFLAGS = @XLCFLAGS@ -fPIC @STACKPROT@ @WARNINGS@
+pam_ipahbac_la_CFLAGS = -fPIC @STACKPROT@ @WARNINGS@
 pam_ipahbac_la_LDFLAGS = -module -avoid-version -shared -export-dynamic -lpam --as-needed --disable-static --shared
 
 install-data-hook:
