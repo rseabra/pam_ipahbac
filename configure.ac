@@ -26,7 +26,8 @@ AM_PROG_LIBTOOL
 
 # Checks for libraries.
 AC_CHECK_LIB(pam, pam_start)
-AC_SEARCH_LIBS([ldap_bind_s], [ldap], , AC_MSG_ERROR([Unable to find OpenLDAP libs]))
+AC_SEARCH_LIBS([ldap_init], ["ldap" "ldap -llber" "ldap -llber -lssl -lcrypto" ], [ LDAP_LIBS="$ac_res" ], AC_MSG_ERROR([Unable to find OpenLDAP libs]))
+LIBS="${_LIBS} ${LDAP_LIBS}"
 
 # Checks for header files.
 AC_CHECK_HEADERS([ldap.h])
@@ -41,6 +42,15 @@ AC_ARG_ENABLE([pamdir], [AS_HELP_STRING([--enable-pamdir],
               [pamdir=$enableval], [pamdir=$libdir/security])
 AC_SUBST(pamdir)
 
+AH_TEMPLATE(HAVE_LDAP, [Define to 1 if you use LDAP.])
+AC_ARG_WITH(ldap, [AS_HELP_STRING([--with-ldap[[=DIR]]], [enable LDAP support])],
+[case $with_ldap in
+    no)		;;
+    *)		AC_DEFINE(HAVE_LDAP)
+		AC_MSG_CHECKING(whether to use sudoers from LDAP)
+		AC_MSG_RESULT(yes)
+		;;
+esac])
 
 case "$host_os" in
 	*solaris*)
