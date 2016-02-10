@@ -31,10 +31,6 @@
 
 #include "pam_ipahbac.h"
 
-int ldap_search_s(LDAP *ld, const char *base, int scope, const char *filter, char **attrs, int attrsonly, LDAPMessage **msg) {
-	return ldap_search_ext_s(ld, base, scope, filter, attrs, attrsonly, NULL, NULL, NULL, 0, msg);
-}
-
 // yes, only supports ASCII for now
 int is_dangerous_char(char c) {
 	if(	(44 <= c && c <= 58) ||	// , - . / digits and :
