@@ -53,7 +53,13 @@ AC_ARG_WITH(ldap, [AS_HELP_STRING([--with-ldap[[=DIR]]], [enable LDAP support])]
 esac])
 
 case "$host_os" in
-	*solaris*)
+	*solaris2.10*)
+		LIBS="$LIBS -lresolv"
+		AC_SUBST(pammisc,[])
+		AC_SUBST(WARNINGS,["-Wall"])
+		AC_DEFINE([SOLARIS_BUILD], [1], [Whether to build against Solaris])
+	;;
+	*solaris2.11*)
 		LIBS="$LIBS -lresolv"
 		AC_SUBST(pammisc,[])
 		AC_SUBST(WARNINGS,["-Wall"])
