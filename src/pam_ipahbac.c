@@ -473,8 +473,9 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 
 #ifdef SOLARIS_BUILD
 	if( ! (gotuser && gotpass && gotbase && gotservers && gotkeydb) ) {
-#endif
+#else
 	if( ! (gotuser && gotpass && gotbase && gotservers ) ) {
+#endif
 		printf("ERROR: missing -u, -p, -b or -l parameters (%d,%d,%d,%d). Please RTFM.\n", gotuser, gotpass, gotbase, gotservers);
 		return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
 	}
