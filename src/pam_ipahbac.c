@@ -56,6 +56,29 @@ int dangerous_str(char* str) {
 	return 0;
 }
 
+#if defined(SOLARIS_BUILD)
+ #if defined(SOLARIS_OLD)
+	/* Written by Kaveh R. Ghazi <ghazi@caip.rutgers.edu> */
+    char *
+    strndup (const char *S, size_t n)
+    {
+        char *result;
+        size_t len = strlen (S);
+
+        if (n < len)
+         len = n;
+
+        result = (char *) malloc (len + 1);
+        if (!result)
+         return 0;
+
+        memcpy (result, S, len);
+        result[len] = '\0';
+        return(result);
+    }
+ #endif
+#endif
+
 int hbac_check_memberservice(LDAP* ld, const char* base, LDAPMessage* entry, char* attr, const char* name) {
 	int i,pos,retval;
 	char** values=NULL;

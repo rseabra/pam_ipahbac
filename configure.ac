@@ -58,6 +58,7 @@ case "$host_os" in
 		AC_SUBST(pammisc,[])
 		AC_SUBST(WARNINGS,["-Wall"])
 		AC_DEFINE([SOLARIS_BUILD], [1], [Whether to build against Solaris])
+		AC_DEFINE([SOLARIS_OLD], [1], [Whether to build against pre Solaris 11])
 	;;
 	*solaris2.11*)
 		LIBS="$LIBS -lresolv"
