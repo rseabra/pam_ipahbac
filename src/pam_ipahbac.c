@@ -102,7 +102,7 @@ int hbac_check_memberservice(LDAP* ld, const char* base, LDAPMessage* entry, cha
 	return found;
 }
 
-int hbac_check_memberhost(LDAP* ld, const char* base, LDAPMessage* entry, char* attr, const char* name) {
+int hbac_check_memberhost(LDAP* ld, const char* base, LDAPMessage* entry, char* attr, char* name) {
 	int i,pos,retval;
 	char** values=NULL;
 	char dn[LEN];
@@ -195,7 +195,7 @@ int hbac_check_memberuser(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 	return found;
 }
 
-int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, const char* bindpw, const char* thishost, const char* svcname, const char* username, char* keydb) {
+int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, const char* bindpw, char* fqdn, const char* svcname, const char* username, char* keydb) {
 	int attruser;
 	int attrhost;
 	int attrsvc;
@@ -204,9 +204,12 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 	int matchsvc=0;
 	int retval=0;
 
+	int i=0;
+	char** values=NULL;
+
 	char hbacbase[LEN];
 	const char* filter="(&(objectclass=ipahbacrule)(ipaenabledflag=true)(accessruletype=allow))";
-	char* attrs[] = { "memberuser", "memberhost", "memberservice", NULL } ;
+	char* attrs[] = { "memberuser", "memberhost", "memberservice", "usercategory", "hostcategory", "servicecategory", NULL } ;
 	int ldap_version=LDAP_VERSION3;
 	LDAP* ld=NULL;
 	LDAPMessage* msg=NULL;
@@ -238,7 +241,7 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 #else
 	retval = ldap_initialize(&ld, ldapservers);
 	if(retval != 0) {
-		printf("Error initializing LDAP: %d\n", retval);
+		printf("Error initializing LDAP (%d): %s\n", retval, ldapservers);
 		return 0;
 	}
 #endif
@@ -269,22 +272,42 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 		attrsvc=0;
 
 		for(attr = ldap_first_attribute(ld, entry, &ber); attr != NULL; attr = ldap_next_attribute(ld, msg, ber)) {
+
+			if( strncmp(attr, "usercategory", 12) == 0) {
+				values = ldap_get_values(ld, entry, attr);
+				for(i=0; values[i] != NULL; i++) {
+					if(strncmp(values[i], "all", 3) == 0) matchuser=1;
+				}
+				if(debug) printf("CHECKING userCategory: %d\n", matchuser);
+			}
 			if( strncmp(attr, "memberuser", 10) == 0) {
-				attruser=1;
 				matchuser = hbac_check_memberuser(ld, base, entry, attr, username);
+				if(debug) printf("CHECKING user: %d\n", matchuser);
+			}
+
+			if( strncmp(attr, "hostcategory", 12) == 0) {
+				values = ldap_get_values(ld, entry, attr);
+				for(i=0; values[i] != NULL; i++) {
+					if(strncmp(values[i], "all", 3) == 0) matchhost=1;
+				}
+				if(debug) printf("CHECKING hostCategory: %d\n", matchhost);
 			}
 			if( strncmp(attr, "memberhost", 10) == 0) {
-				attrhost=1;
-				matchhost = hbac_check_memberhost(ld, base, entry, attr, thishost);
+				matchhost = hbac_check_memberhost(ld, base, entry, attr, fqdn);
+				if(debug) printf("CHECKING host: %d\n", matchhost);
+			}
+			if( strncmp(attr, "servicecategory", 15) == 0) {
+				values = ldap_get_values(ld, entry, attr);
+				for(i=0; values[i] != NULL; i++) {
+					if(strncmp(values[i], "all", 3) == 0) matchsvc=1;
+				}
+				if(debug) printf("CHECKING serviceCategory: %d\n", matchsvc);
 			}
 			if( strncmp(attr, "memberservice", 13) == 0) {
-				attrsvc=1;
 				matchsvc = hbac_check_memberservice(ld, base, entry, attr, svcname);
+				if(debug) printf("CHECKING service got %d\n", matchsvc);
 			}
 		}
-		if(!attruser) matchuser=1;
-		if(!attrhost) matchhost=1;
-		if(!attrsvc) matchsvc=1;
 
 		if (matchuser && matchhost && matchsvc) {
 			ldap_unbind_s(ld);
@@ -296,9 +319,11 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 	return 0;
 }
 
-int free_and_return(int retval, char* binduser, char* bindpw, char* base, char* ldapservers, char* keydb) {
+int free_and_return(int retval, char* binduser, char* bindpw, char* fqdn, char* domain, char* base, char* ldapservers, char* keydb) {
 	if(binduser) free(binduser);
 	if(bindpw) free(bindpw);
+	if(fqdn) free(fqdn);
+	if(domain) free(domain);
 	if(base) free(base);
 	if(ldapservers) free(ldapservers);
 	if(keydb) free(keydb);
@@ -355,6 +380,8 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	int retval;
 	int opt;
 	char thishost[LEN];
+	char* fqdn=NULL;
+	char* domain=NULL;
 	char* binduser=NULL;
 	char* bindpw=NULL;
 	FILE* bindpwfile=NULL;
@@ -391,84 +418,98 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	if(dangerous_str(thishost)) return PAM_PERM_DENIED;
 
 	optind=0;
-	while( (opt = getopt(argc, (char * const*)argv, "k:u:p:P:b:l:x:") ) != -1 ) {
+	while( (opt = getopt(argc, (char * const*)argv, "d:k:u:p:P:b:l:x:D:") ) != -1 ) {
 		switch(opt) {
+			case 'd':
+				debug=1;
+				break;
 			case 'u':
-				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				binduser=strndup(optarg, LEN-1);
 				if(!binduser) {
 					printf("Error reading binduser %s: %s\n", optarg, strerror(errno));
-					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
 				gotuser=1;
 				break;
 			case 'p':
-				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				bindpw=strndup(optarg, LEN-1);
 				if(!bindpw) {
 					printf("Error reading bindpw %s: %s\n", optarg, strerror(errno));
-					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
 				gotpass=1;
 				break;
 			case 'P':
-				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				bindpwfile=fopen(optarg, "r");
 				if(!bindpwfile) {
 					printf("Error opening bindpw from %s: %s\n", optarg, strerror(errno));
-					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
 				bindpw=malloc(LEN);
 				if(!bindpw) {
 					printf("Not enough memory to create bindpw buffer: %s\n", strerror(errno));
 					fclose(bindpwfile);
-					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
 				memset(bindpw, 0, LEN);
 				if(!fgets(bindpw, LEN, bindpwfile)) {
 					printf("Error reading bindpw from %s: %s\n", optarg, strerror(errno));
 					fclose(bindpwfile);
-					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
 				fclose(bindpwfile);
 				gotpass=1;
 				break;
 			case 'b':
-				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				base=strndup(optarg, LEN-1);
 				if(!base) {
 					printf("Error reading base %s: %s\n", optarg, strerror(errno));
-					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
 				gotbase=1;
 				break;
 			case 'l':
-				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				ldapservers=strndup(optarg, LEN-1);
 				if(!ldapservers) {
 					printf("Error reading ldapservers %s: %s\n", optarg, strerror(errno));
-					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
 				gotservers=1;
 				break;
 #ifdef SOLARIS_BUILD
 			case 'k':
-				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				keydb=strndup(optarg, LEN-1);
 				if(!keydb) {
 					printf("Error reading keydb %s: %s\n", optarg, strerror(errno));
-					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
 				gotkeydb=1;
 				break;
 #endif
 			case 'x':
-				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				if(check_exceptions(optarg, username) ) {
-					return free_and_return(PAM_SUCCESS, binduser, bindpw, base, ldapservers, keydb);
+					return free_and_return(PAM_SUCCESS, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
 				break;
+			case 'D':
+				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
+				domain=strndup(optarg, LEN-1);
+				break;
 		}
+	}
+
+	if(strchr(thishost,'.')) {
+		fqdn=strndup(thishost, LEN-1);
+	} else {
+		fqdn=(char*)malloc(strlen(thishost)+strlen(domain)+2);
+		retval = snprintf(fqdn, LEN-1, "%s.%s", thishost, domain);
 	}
 
 #ifdef SOLARIS_BUILD
@@ -477,21 +518,24 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	if( ! (gotuser && gotpass && gotbase && gotservers ) ) {
 #endif
 		printf("ERROR: missing -u, -p, -b or -l parameters (%d,%d,%d,%d). Please RTFM.\n", gotuser, gotpass, gotbase, gotservers);
-		return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+		return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 	}
 
 	if( 0 > snprintf(sysaccount, LEN-1, "uid=%s,cn=sysaccounts,cn=etc,%s", binduser, base) ) {
 		printf("ERROR: failure defining the sysaccount for %s in %s\n", binduser, base);
-		return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+		return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 	}
 
-	//printf("Hostname: %s\n", thishost);
-	//printf("Binduser: %s\n", sysaccount);
-	//printf("Bindpw: %s\n", bindpw);
-	//printf("Base: %s\n", base);
-	//printf("LDAP Servers: %s\n", ldapservers);
+	if(debug) {
+		printf("Hostname: %s\n", thishost);
+		printf("Binduser: %s\n", sysaccount);
+		printf("Bindpw: %s\n", bindpw);
+		printf("Base: %s\n", base);
+		printf("LDAP Servers: %s\n", ldapservers);
+		printf("ipa_check_hbac(%s, %s, %s, %s, %s, %s, %s, %s)\n", ldapservers, base, sysaccount, bindpw, fqdn, svcname, username, keydb);
+	}
 
-	if (ipa_check_hbac(ldapservers, base, sysaccount, bindpw, thishost, svcname, username, keydb))
-		return free_and_return(PAM_SUCCESS, binduser, bindpw, base, ldapservers, keydb);
-	else return free_and_return(PAM_PERM_DENIED, binduser, bindpw, base, ldapservers, keydb);
+	if (ipa_check_hbac(ldapservers, base, sysaccount, bindpw, fqdn, svcname, username, keydb))
+		return free_and_return(PAM_SUCCESS, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
+	else return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 }

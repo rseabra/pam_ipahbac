@@ -21,6 +21,8 @@ To build, either use the build scripts or use these commands:
 	make
 	sudo make install
 
+Building in AIX is a very long story, I'll be adding the rpm SPEC but one basically needs to build a lot of dependencies before it may work, the usual source of RPMS for AIX doesn't do them well enough.
+
 **Testing**
 
 You can check sample.pam included for more details about configuring the module, but it's a bit like this:
@@ -32,11 +34,13 @@ You can check sample.pam included for more details about configuring the module,
 
 Options
 -------
-* blameGetOpt is only needed in GNU/Linux, getopt expects argv[0] to be the command. Not needed in Solaris, it works differently there. (Why use getopt?... well... why have the trouble of parsing options myself?)
-* `-b BASE` is mandatory, the IPA domain base
+* blameGetOpt is only needed in GNU/Linux and AIX as getopt is expecting argv[0] to be the command. Not needed in Solaris, it works differently there. (Why use getopt?... well... why have the trouble of parsing options myself?)
+* `-d level` is optional, the debug level (use a value greater than zero, although currently only has one debug level)
+* `-D domain` is optional, and used to create the FQDN if the hostname is the short version (eg, a.b.c).
+* `-b BASE` is mandatory, the IPA domain base (eg dc=a,dc=b,dc=c)
 * `-u USER` is mandatory, an IPA sysaccount but only the uid value is needed, the rest is derived from the base
 * `-p PASS` or `-P path` is mandatory, as you'll need the sysaccount's password. The second form reads the whole first line of bytes as the password, including newline if present
-* `-l LDAPSERVERS` is mandatory, and comprised of a comma separated list of LDAP servers. Use URI's in GNU/Linux, host:port in Solaris. TLS is **expected and required**.
+* `-l LDAPSERVERS` is mandatory, and comprised of a comma separated list of LDAP servers. Use URI's in GNU/Linux and AIX, host:port in Solaris. TLS is **expected and required**.
 * `-k path` is mandatory **in Solaris**; it's the path to the NSSDB that OpenLDAP is using.
 * `-x path` is an optional file with a line separated list of users who will be immediately accepted (useful for root and application accounts).
 
@@ -47,7 +51,7 @@ Status
 | --- |:------:| ------------ |
 | Fedora 23 | Done | |
 | Solaris 11.3 | Done | Remember to compile in 64 and 32 bits... |
-| AIX 6.1/7.1 | Compiles | Being seriously tested. Compiles but there are issues (eg, -lldap is missing from the linker, which might have been fixed by recent changes), working on it. I decided to not care about IDSLDAP and just use OpenLDAP, which is sort of a requirement for sudo with LDAP support anyway, so it will be there for sure |
+| AIX 6.1/7.1 | Works | Still being tested. Compiles and validates when tested with SSH and the test program. I decided to not care about IDSLDAP and just use OpenLDAP, which is sort of a requirement for sudo with LDAP support anyway, so it will be there for sure |
 
 Resources
 =========
