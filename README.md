@@ -28,7 +28,6 @@ Building in AIX is a very long story, I'll be adding the rpm SPEC but one basica
 You can check sample.pam included for more details about configuring the module, but it's a bit like this:
 
 	cat <<EOF > /etc/pam.d/ipahbac_test
-	auth       required     pam_ipahbac.so blameGetOpt -u YourSysAccount -b dc=your,dc=domain -P /etc/ldap.secret -l ldaps://ldap1/,ldaps://ldap2/..
 	account    required     pam_ipahbac.so blameGetOpt -u YourSysAccount -b dc=your,dc=domain -P /etc/ldap.secret -l ldaps://ldap1/,ldaps://ldap2/..
 	EOF
 

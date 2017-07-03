@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <syslog.h>
 #include <security/pam_appl.h>
 #include <security/pam_modules.h>
 
@@ -33,11 +34,7 @@
 
 // yes, only supports ASCII for now
 int is_dangerous_char(char c) {
-	if(	(44 <= c && c <= 58) ||	// , - . / digits and :
-		(64 <= c && c <= 90) ||	// @ and A-Z
-		(97 <= c && c <= 122) || // a-z
-		(95 == c) || (61 == c)	// _ and =
-	  ) return 0;
+	if(33 <= c && c <= 126) return 0;
 	return 1;
 }
 
@@ -46,10 +43,11 @@ int dangerous_str(char* str) {
 	size_t i;
 	size_t length = strlen(str);
 	if(length >= LEN) return 0;
-	//printf("Length of %s is %d\n", str, length);
+	//if (debug) syslog(LOG_DEBUG, "Length of %s is %d\n", str, length);
 	for(i=0; i < length; i++) {
 		if(is_dangerous_char(str[i])) {
 			//printf("DANGER with %d!\n", str[i]);
+			if (debug) syslog(LOG_DEBUG, "Danger with %d!\n", str[i]);
 			return 1;
 		}
 	}
@@ -110,7 +108,7 @@ int hbac_check_memberservice(LDAP* ld, const char* base, LDAPMessage* entry, cha
 					//printf("MATCH SVC %s on group %s\n", dn, values[i]);
 					found=1;
 				}
-			} else { printf("Error in LDAP search: %s\n", ldap_err2string(retval)); }
+			} else { syslog(LOG_ERR,"Error in LDAP search: %s\n", ldap_err2string(retval)); }
 			if(msg != NULL) ldap_msgfree(msg);
 		} else {
 			index=strstr(values[i], "cn=hbacservices");
@@ -156,7 +154,7 @@ int hbac_check_memberhost(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 					//printf("MATCH HOST %s on group %s\n", dn, values[i]);
 					found=1;
 				}
-			} else { printf("Error in LDAP search: %s\n", ldap_err2string(retval)); }
+			} else { syslog(LOG_ERR,"Error in LDAP search: %s\n", ldap_err2string(retval)); }
 			if(msg != NULL) ldap_msgfree(msg);
 		} else {
 			index=strstr(values[i], "cn=computers");
@@ -202,7 +200,7 @@ int hbac_check_memberuser(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 					//printf("MATCH USER %s on group %s\n", dn, values[i]);
 					found=1;
 				}
-			} else { printf("Error in LDAP search: %s\n", ldap_err2string(retval)); }
+			} else { syslog(LOG_ERR,"Error in LDAP search: %s\n", ldap_err2string(retval)); }
 
 			if(msg != NULL) ldap_msgfree(msg);
 		} else {
@@ -244,50 +242,57 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 
 # define LDAP_OPT_SUCCESS LDAP_SUCCESS
 
-	int i,len;
+	int len;
 
+	if (debug) syslog(LOG_DEBUG,"ldapssl_client_init(keydb, NULL)\n");
 	if(ldapssl_client_init(keydb, NULL) < 0) {
-		printf("Error initializing ssl client\n");
+		syslog(LOG_ERR,"Error initializing ssl client\n");
 		return 0;
 	}
 
+	if (debug) syslog(LOG_DEBUG,"replacing ,s with spaces\n");
 	len = strlen(ldapservers);
 	for(i=0; i<=len; i++) {
 		if(ldapservers[i]==',') ldapservers[i]=' ';
 	}
 
+	if (debug) syslog(LOG_DEBUG,"ldapssl_init(%s, 636, LDAPSSL_AUTH_CNCHECK)\n", ldapservers);
 	ld = ldapssl_init(ldapservers, 636, LDAPSSL_AUTH_CNCHECK);
 	if(ld == NULL) {
-		printf("Error initializing LDAP (ldapssl_init returned NULL)\n");
+		syslog(LOG_ERR,"Error initializing LDAP (ldapssl_init returned NULL)\n");
 		return 0;
 	}
 #else
+	if (debug) syslog(LOG_DEBUG,"ldap_initialize(&ld, ldapservers)\n");
 	retval = ldap_initialize(&ld, ldapservers);
 	if(retval != 0) {
-		printf("Error initializing LDAP (%d): %s\n", retval, ldapservers);
+		syslog(LOG_ERR,"Error initializing LDAP (%d): %s\n", retval, ldapservers);
 		return 0;
 	}
 #endif
 
+	if (debug) syslog(LOG_DEBUG,"ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &ldap_version)\n");
 	if( ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &ldap_version) != LDAP_OPT_SUCCESS ) {
-		printf("Error setting LDAPv3\n");
+		syslog(LOG_ERR,"Error setting LDAPv3\n");
 		return 0;
 	}
 
+	if (debug) syslog(LOG_DEBUG,"ldap_bind_s(ld, binduser, bindpw, LDAP_AUTH_SIMPLE)) != LDAP_SUCCESS )\n");
 	if( (retval = ldap_bind_s(ld, binduser, bindpw, LDAP_AUTH_SIMPLE)) != LDAP_SUCCESS ) {
-		printf("Error binding to LDAP: %s\n", ldap_err2string(retval));
+		syslog(LOG_ERR,"Error binding to LDAP: %s\n", ldap_err2string(retval));
 		return 0;
 	}
 
 // ldapsearch -H ldaps://server/ -Z -D 'cn=directory manager' -W -b cn=hbac,dc=domain... '(&(objectclass=ipahbacrule)(ipaenabledflag=true)(accessruletype=allow))' memberuser memberhost memberservice
 
+	if (debug) syslog(LOG_DEBUG,"ldap_search_s(ld, hbacbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)\n");
 	if(0 > snprintf(hbacbase, LEN, "cn=hbac,%s", (char*)base)) return 0;
 	if( (retval=ldap_search_s(ld, hbacbase, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &msg)) != LDAP_SUCCESS) {
-		printf("Error in LDAP search: %s\n", ldap_err2string(retval));
+		syslog(LOG_ERR,"Error in LDAP search: %s\n", ldap_err2string(retval));
 		ldap_unbind_s(ld);
 		return 0;
 	}
-	//printf("Number of entries: %d\n", ldap_count_entries(ld, msg));
+	if (debug) syslog(LOG_DEBUG,"Number of entries: %d\n", ldap_count_entries(ld, msg));
 
 	for(entry = ldap_first_entry(ld, msg); entry != NULL; entry = ldap_next_entry(ld, entry)) {
 		attruser=0;
@@ -301,11 +306,11 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 				for(i=0; values[i] != NULL; i++) {
 					if(strncmp(values[i], "all", 3) == 0) matchuser=1;
 				}
-				if(debug) printf("CHECKING userCategory: %d\n", matchuser);
+				if(debug) syslog(LOG_DEBUG,"CHECKING userCategory: %d\n", matchuser);
 			}
 			if( strncmp(attr, "memberuser", 10) == 0) {
 				matchuser = hbac_check_memberuser(ld, base, entry, attr, username);
-				if(debug) printf("CHECKING user: %d\n", matchuser);
+				if(debug) syslog(LOG_DEBUG,"CHECKING user: %d\n", matchuser);
 			}
 
 			if( strncmp(attr, "hostcategory", 12) == 0) {
@@ -313,22 +318,22 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 				for(i=0; values[i] != NULL; i++) {
 					if(strncmp(values[i], "all", 3) == 0) matchhost=1;
 				}
-				if(debug) printf("CHECKING hostCategory: %d\n", matchhost);
+				if(debug) syslog(LOG_DEBUG,"CHECKING hostCategory: %d\n", matchhost);
 			}
 			if( strncmp(attr, "memberhost", 10) == 0) {
 				matchhost = hbac_check_memberhost(ld, base, entry, attr, fqdn);
-				if(debug) printf("CHECKING host: %d\n", matchhost);
+				if(debug) syslog(LOG_DEBUG,"CHECKING host: %d\n", matchhost);
 			}
 			if( strncmp(attr, "servicecategory", 15) == 0) {
 				values = ldap_get_values(ld, entry, attr);
 				for(i=0; values[i] != NULL; i++) {
 					if(strncmp(values[i], "all", 3) == 0) matchsvc=1;
 				}
-				if(debug) printf("CHECKING serviceCategory: %d\n", matchsvc);
+				if(debug) syslog(LOG_DEBUG,"CHECKING serviceCategory: %d\n", matchsvc);
 			}
 			if( strncmp(attr, "memberservice", 13) == 0) {
 				matchsvc = hbac_check_memberservice(ld, base, entry, attr, svcname);
-				if(debug) printf("CHECKING service got %d\n", matchsvc);
+				if(debug) syslog(LOG_DEBUG,"CHECKING service got %d\n", matchsvc);
 			}
 		}
 
@@ -359,7 +364,7 @@ int check_exceptions(const char* exceptions_file, const char* username) {
 	char line[LEN];
 	file = fopen(exceptions_file, "r");
 	if(!file) {
-		printf("Error opening %s: %s\n", exceptions_file, strerror(errno));
+		syslog(LOG_ERR,"Error opening %s: %s\n", exceptions_file, strerror(errno));
 		return 0;
 	}
 
@@ -380,25 +385,9 @@ int check_exceptions(const char* exceptions_file, const char* username) {
 
 /* credentials */
 #if defined(SOLARIS_BUILD) || defined(AIX_BUILD)
-int pam_sm_setcred( pam_handle_t *pamh, int flags, int argc, const char **argv ) {
-	return PAM_IGNORE;
-}
-
-int pam_sm_acct_mgmt( pam_handle_t *pamh, int flags, int argc, const char **argv ) {
-	return pam_sm_authenticate(pamh, flags, argc, argv);
-}
-
-int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, const char **argv ) {
+int pam_sm_acct_mgmt( pam_handle_t *pamh, int flags,int argc, const char **argv ) {
 #else
-PAM_EXTERN int pam_sm_setcred( pam_handle_t *pamh, int flags, int argc, const char **argv ) {
-	return PAM_IGNORE;
-}
-
 PAM_EXTERN int pam_sm_acct_mgmt( pam_handle_t *pamh, int flags, int argc, const char **argv ) {
-	return pam_sm_authenticate(pamh, flags, argc, argv);
-}
-
-PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, const char **argv ) {
 #endif
 	int retval;
 	int opt;
@@ -426,104 +415,136 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	int gotbase=0;
 	int gotservers=0;
 
+	openlog("pam_ipahbac", LOG_PID, LOG_AUTH);
+	if (debug) syslog(LOG_DEBUG, "starting user hbac test\n");
+
+	/*
 	retval = pam_get_user(pamh, &username, "Username: ");
 	if (retval != PAM_SUCCESS || dangerous_str((char*)username)) {
 		return PAM_PERM_DENIED;
 	}
+	*/
+
+	retval = pam_get_item(pamh, PAM_USER, (void*)&username);
+	if (retval != PAM_SUCCESS || dangerous_str((char*)username)) {
+		return PAM_PERM_DENIED;
+	}
+	if (debug) syslog(LOG_DEBUG, "got user %s\n", username);
 
 	retval = pam_get_item(pamh, PAM_SERVICE, (void*)&svcname);
 	if (retval != PAM_SUCCESS || dangerous_str((char*)svcname)) {
 		return PAM_PERM_DENIED;
 	}
+	if (debug) syslog(LOG_DEBUG, "got service %s\n", svcname);
 
 	thishost[LEN-1]='\0';
 	gethostname(thishost, LEN-1);
 	if(dangerous_str(thishost)) return PAM_PERM_DENIED;
+	if (debug) syslog(LOG_DEBUG, "got host %s\n", thishost);
 
 	optind=0;
 	while( (opt = getopt(argc, (char * const*)argv, "d:k:u:p:P:b:l:x:D:") ) != -1 ) {
+		if (debug) syslog(LOG_DEBUG, "while cycle for opt %c\n", opt);
 		switch(opt) {
 			case 'd':
+				if (debug) syslog(LOG_DEBUG, "debug enabled\n");
 				debug=1;
 				break;
 			case 'u':
+				if (debug) syslog(LOG_DEBUG, "parsing bind user\n");
 				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				binduser=strndup(optarg, LEN-1);
 				if(!binduser) {
-					printf("Error reading binduser %s: %s\n", optarg, strerror(errno));
+					if (debug) syslog(LOG_DEBUG,"Error reading binduser %s: %s\n", optarg, strerror(errno));
 					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
+				if (debug) syslog(LOG_DEBUG, "bind user: %s\n", binduser);
 				gotuser=1;
 				break;
 			case 'p':
+				if (debug) syslog(LOG_DEBUG, "parsing bind password\n");
 				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				bindpw=strndup(optarg, LEN-1);
 				if(!bindpw) {
-					printf("Error reading bindpw %s: %s\n", optarg, strerror(errno));
+					if (debug) syslog(LOG_DEBUG,"Error reading bindpw %s: %s\n", optarg, strerror(errno));
 					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
+				if (debug) syslog(LOG_DEBUG, "got a bind password\n");
 				gotpass=1;
 				break;
 			case 'P':
+				if (debug) syslog(LOG_DEBUG, "parsing bind password file\n");
 				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				bindpwfile=fopen(optarg, "r");
 				if(!bindpwfile) {
-					printf("Error opening bindpw from %s: %s\n", optarg, strerror(errno));
+					if (debug) syslog(LOG_DEBUG,"Error opening bindpw from %s: %s\n", optarg, strerror(errno));
 					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
 				bindpw=malloc(LEN);
 				if(!bindpw) {
-					printf("Not enough memory to create bindpw buffer: %s\n", strerror(errno));
+					if (debug) syslog(LOG_DEBUG,"Not enough memory to create bindpw buffer: %s\n", strerror(errno));
 					fclose(bindpwfile);
 					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
 				memset(bindpw, 0, LEN);
 				if(!fgets(bindpw, LEN, bindpwfile)) {
-					printf("Error reading bindpw from %s: %s\n", optarg, strerror(errno));
+					if (debug) syslog(LOG_DEBUG,"Error reading bindpw from %s: %s\n", optarg, strerror(errno));
 					fclose(bindpwfile);
 					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
 				fclose(bindpwfile);
+				if (debug) syslog(LOG_DEBUG, "got a bind password from a file\n");
 				gotpass=1;
 				break;
 			case 'b':
+				if (debug) syslog(LOG_DEBUG, "parsing ldap base\n");
 				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				base=strndup(optarg, LEN-1);
 				if(!base) {
-					printf("Error reading base %s: %s\n", optarg, strerror(errno));
+					if (debug) syslog(LOG_DEBUG,"Error reading base %s: %s\n", optarg, strerror(errno));
 					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
+				if (debug) syslog(LOG_DEBUG, "got an ldap base: %s\n", base);
 				gotbase=1;
 				break;
 			case 'l':
+				if (debug) syslog(LOG_DEBUG, "parsing ldap server list\n");
 				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				ldapservers=strndup(optarg, LEN-1);
 				if(!ldapservers) {
-					printf("Error reading ldapservers %s: %s\n", optarg, strerror(errno));
+					if (debug) syslog(LOG_DEBUG,"Error reading ldapservers %s: %s\n", optarg, strerror(errno));
 					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
+				if (debug) syslog(LOG_DEBUG, "got an ldap serverlist: [ %s ]\n", ldapservers);
 				gotservers=1;
 				break;
 #ifdef SOLARIS_BUILD
 			case 'k':
+				if (debug) syslog(LOG_DEBUG, "parsing ldap ca key db\n");
 				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				keydb=strndup(optarg, LEN-1);
 				if(!keydb) {
-					printf("Error reading keydb %s: %s\n", optarg, strerror(errno));
+					if (debug) syslog(LOG_DEBUG,"Error reading keydb %s: %s\n", optarg, strerror(errno));
 					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
+				if (debug) syslog(LOG_DEBUG, "got an ldap ca key db: %s\n", keydb);
 				gotkeydb=1;
 				break;
 #endif
 			case 'x':
+				if (debug) syslog(LOG_DEBUG, "parsing user check exclusions file\n");
 				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
+				if (debug) syslog(LOG_DEBUG, "checking user check exclusions\n");
 				if(check_exceptions(optarg, username) ) {
 					return free_and_return(PAM_SUCCESS, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
+				if (debug) syslog(LOG_DEBUG, "user not excluded from hbac\n");
 				break;
 			case 'D':
+				if (debug) syslog(LOG_DEBUG, "parsing domain\n");
 				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				domain=strndup(optarg, LEN-1);
+				if (debug) syslog(LOG_DEBUG, "got a domain: %s\n", domain);
 				break;
 		}
 	}
@@ -534,31 +555,41 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 		fqdn=(char*)malloc(strlen(thishost)+strlen(domain)+2);
 		retval = snprintf(fqdn, LEN-1, "%s.%s", thishost, domain);
 	}
+	if (debug) syslog(LOG_DEBUG, "fqdn host: %s\n", fqdn);
 
 #ifdef SOLARIS_BUILD
 	if( ! (gotuser && gotpass && gotbase && gotservers && gotkeydb) ) {
 #else
 	if( ! (gotuser && gotpass && gotbase && gotservers ) ) {
 #endif
-		printf("ERROR: missing -u, -p, -b or -l parameters (%d,%d,%d,%d). Please RTFM.\n", gotuser, gotpass, gotbase, gotservers);
+		syslog(LOG_AUTH|LOG_ERR,"ERROR: missing -u, -p, -b or -l parameters (%d,%d,%d,%d). Please RTFM.\n", gotuser, gotpass, gotbase, gotservers);
 		return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 	}
 
+	if (debug) syslog(LOG_DEBUG, "generating ldap bind dn\n", fqdn);
 	if( 0 > snprintf(sysaccount, LEN-1, "uid=%s,cn=sysaccounts,cn=etc,%s", binduser, base) ) {
-		printf("ERROR: failure defining the sysaccount for %s in %s\n", binduser, base);
+		syslog(LOG_ERR,"ERROR: failure defining the sysaccount for %s in %s\n", binduser, base);
 		return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 	}
+	syslog(LOG_DEBUG, "bind dn: %s\n", sysaccount);
 
 	if(debug) {
+/*
 		printf("Hostname: %s\n", thishost);
 		printf("Binduser: %s\n", sysaccount);
-		printf("Bindpw: %s\n", bindpw);
+		//printf("Bindpw: %s\n", bindpw);
 		printf("Base: %s\n", base);
 		printf("LDAP Servers: %s\n", ldapservers);
 		printf("ipa_check_hbac(%s, %s, %s, %s, %s, %s, %s, %s)\n", ldapservers, base, sysaccount, bindpw, fqdn, svcname, username, keydb);
+*/
+		syslog(LOG_DEBUG, "ipa_check_hbac(%s, %s, %s, %s, %s, %s, %s)\n", ldapservers, base, sysaccount, fqdn, svcname, username, keydb);
 	}
 
-	if (ipa_check_hbac(ldapservers, base, sysaccount, bindpw, fqdn, svcname, username, keydb))
+	if (retval = ipa_check_hbac(ldapservers, base, sysaccount, bindpw, fqdn, svcname, username, keydb)) {
+		syslog(LOG_AUTH|LOG_INFO, "%d = ipa_check_hbac(%s, %s, %s, %s, %s, %s, %s)\n", retval, ldapservers, base, sysaccount, fqdn, svcname, username, keydb);
 		return free_and_return(PAM_SUCCESS, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
-	else return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
+	} else {
+		syslog(LOG_AUTH|LOG_WARNING, "user unauthorized: %s had no valid HBAC rule for this host\n", username);
+		return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
+	}
 }

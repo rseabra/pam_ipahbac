@@ -64,7 +64,7 @@ case "$host_os" in
 		LIBS="$LIBS -lresolv"
 		AC_SUBST(pammisc,[])
 		AC_SUBST(WARNINGS,["-Wall"])
-		AC_SUBST(STACKPROT,["-fstack-protector"])
+		AC_SUBST(STACKPROT,[""])
 		AC_DEFINE([SOLARIS_BUILD], [1], [Whether to build against Solaris])
 	;;
 	*aix*)

@@ -35,9 +35,8 @@ int main(int argc, char *argv[]) {
 
 	retval = pam_start(ME, user, &conv, &pamh);
 
-	// Are the credentials correct?
 	if (retval == PAM_SUCCESS) {
-		retval = pam_authenticate(pamh, 0);
+		retval = pam_acct_mgmt(pamh, 0);
 	}
 
 	// Can the accound be used at this time?
