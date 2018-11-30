@@ -559,10 +559,11 @@ PAM_EXTERN int pam_sm_acct_mgmt( pam_handle_t *pamh, int flags, int argc, const 
 
 #ifdef SOLARIS_BUILD
 	if( ! (gotuser && gotpass && gotbase && gotservers && gotkeydb) ) {
+		syslog(LOG_AUTH|LOG_ERR,"ERROR: missing -u, -p/P, -b, -l, or -k parameters (%d,%d,%d,%d,%d). Please RTFM.\n", gotuser, gotpass, gotbase, gotservers, gotkeydb);
 #else
 	if( ! (gotuser && gotpass && gotbase && gotservers ) ) {
+		syslog(LOG_AUTH|LOG_ERR,"ERROR: missing -u, -p/P, -b or -l parameters (%d,%d,%d,%d). Please RTFM.\n", gotuser, gotpass, gotbase, gotservers);
 #endif
-		syslog(LOG_AUTH|LOG_ERR,"ERROR: missing -u, -p, -b or -l parameters (%d,%d,%d,%d). Please RTFM.\n", gotuser, gotpass, gotbase, gotservers);
 		return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 	}
 

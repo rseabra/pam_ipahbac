@@ -39,7 +39,7 @@ Options
 * `-b BASE` is mandatory, the IPA domain base (eg dc=a,dc=b,dc=c)
 * `-u USER` is mandatory, an IPA sysaccount but only the uid value is needed, the rest is derived from the base
 * `-p PASS` or `-P path` is mandatory, as you'll need the sysaccount's password. The second form reads the whole first line of bytes as the password, including newline if present
-* `-l LDAPSERVERS` is mandatory, and comprised of a comma separated list of LDAP servers. Use URI's in GNU/Linux and AIX, host:port in Solaris. TLS is **expected and required**.
+* `-l LDAPSERVERS` is mandatory, and comprised of a comma separated list of LDAP servers. Use URI's in GNU/Linux and AIX, **host:port in Solaris**. TLS is **expected and required**.
 * `-k path` is mandatory **in Solaris**; it's the path to the NSSDB that OpenLDAP is using.
 * `-x path` is an optional file with a line separated list of users who will be immediately accepted (useful for root and application accounts).
 
