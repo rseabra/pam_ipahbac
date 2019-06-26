@@ -217,9 +217,6 @@ int hbac_check_memberuser(LDAP* ld, const char* base, LDAPMessage* entry, char* 
 }
 
 int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, const char* bindpw, char* fqdn, const char* svcname, const char* username, char* keydb) {
-	int attruser;
-	int attrhost;
-	int attrsvc;
 	int matchuser=0;
 	int matchhost=0;
 	int matchsvc=0;
@@ -238,38 +235,12 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 	char* attr=NULL;
 	BerElement* ber=NULL;
 
-#if defined(SOLARIS_BUILD)
-
-# define LDAP_OPT_SUCCESS LDAP_SUCCESS
-
-	int len;
-
-	if (debug) syslog(LOG_DEBUG,"ldapssl_client_init(keydb, NULL)\n");
-	if(ldapssl_client_init(keydb, NULL) < 0) {
-		syslog(LOG_ERR,"Error initializing ssl client\n");
-		return 0;
-	}
-
-	if (debug) syslog(LOG_DEBUG,"replacing ,s with spaces\n");
-	len = strlen(ldapservers);
-	for(i=0; i<=len; i++) {
-		if(ldapservers[i]==',') ldapservers[i]=' ';
-	}
-
-	if (debug) syslog(LOG_DEBUG,"ldapssl_init(%s, 636, LDAPSSL_AUTH_CNCHECK)\n", ldapservers);
-	ld = ldapssl_init(ldapservers, 636, LDAPSSL_AUTH_CNCHECK);
-	if(ld == NULL) {
-		syslog(LOG_ERR,"Error initializing LDAP (ldapssl_init returned NULL)\n");
-		return 0;
-	}
-#else
 	if (debug) syslog(LOG_DEBUG,"ldap_initialize(&ld, ldapservers)\n");
 	retval = ldap_initialize(&ld, ldapservers);
 	if(retval != 0) {
 		syslog(LOG_ERR,"Error initializing LDAP (%d): %s\n", retval, ldapservers);
 		return 0;
 	}
-#endif
 
 	if (debug) syslog(LOG_DEBUG,"ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &ldap_version)\n");
 	if( ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &ldap_version) != LDAP_OPT_SUCCESS ) {
@@ -295,10 +266,6 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 	if (debug) syslog(LOG_DEBUG,"Number of entries: %d\n", ldap_count_entries(ld, msg));
 
 	for(entry = ldap_first_entry(ld, msg); entry != NULL; entry = ldap_next_entry(ld, entry)) {
-		attruser=0;
-		attrhost=0;
-		attrsvc=0;
-
 		for(attr = ldap_first_attribute(ld, entry, &ber); attr != NULL; attr = ldap_next_attribute(ld, msg, ber)) {
 
 			if( strncmp(attr, "usercategory", 12) == 0) {
@@ -403,7 +370,6 @@ PAM_EXTERN int pam_sm_acct_mgmt( pam_handle_t *pamh, int flags, int argc, const 
 #if defined(SOLARIS_BUILD) || defined(AIX_BUILD)
 	char* username=NULL;
 	char* svcname=NULL;
-	int gotkeydb=0;
 #endif
 #ifdef GNULINUX_BUILD
 	const char* username=NULL;
@@ -518,19 +484,6 @@ PAM_EXTERN int pam_sm_acct_mgmt( pam_handle_t *pamh, int flags, int argc, const 
 				if (debug) syslog(LOG_DEBUG, "got an ldap serverlist: [ %s ]\n", ldapservers);
 				gotservers=1;
 				break;
-#ifdef SOLARIS_BUILD
-			case 'k':
-				if (debug) syslog(LOG_DEBUG, "parsing ldap ca key db\n");
-				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
-				keydb=strndup(optarg, LEN-1);
-				if(!keydb) {
-					if (debug) syslog(LOG_DEBUG,"Error reading keydb %s: %s\n", optarg, strerror(errno));
-					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
-				}
-				if (debug) syslog(LOG_DEBUG, "got an ldap ca key db: %s\n", keydb);
-				gotkeydb=1;
-				break;
-#endif
 			case 'x':
 				if (debug) syslog(LOG_DEBUG, "parsing user check exclusions file\n");
 				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
@@ -586,7 +539,7 @@ PAM_EXTERN int pam_sm_acct_mgmt( pam_handle_t *pamh, int flags, int argc, const 
 		syslog(LOG_DEBUG, "ipa_check_hbac(%s, %s, %s, %s, %s, %s, %s)\n", ldapservers, base, sysaccount, fqdn, svcname, username, keydb);
 	}
 
-	if (retval = ipa_check_hbac(ldapservers, base, sysaccount, bindpw, fqdn, svcname, username, keydb)) {
+	if ( (retval = ipa_check_hbac(ldapservers, base, sysaccount, bindpw, fqdn, svcname, username, keydb)) > 0 ) {
 		syslog(LOG_AUTH|LOG_INFO, "%d = ipa_check_hbac(%s, %s, %s, %s, %s, %s, %s)\n", retval, ldapservers, base, sysaccount, fqdn, svcname, username, keydb);
 		return free_and_return(PAM_SUCCESS, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 	} else {
