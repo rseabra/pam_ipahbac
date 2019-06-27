@@ -229,6 +229,7 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 	const char* filter="(&(objectclass=ipahbacrule)(ipaenabledflag=true)(accessruletype=allow))";
 	char* attrs[] = { "memberuser", "memberhost", "memberservice", "usercategory", "hostcategory", "servicecategory", NULL } ;
 	int ldap_version=LDAP_VERSION3;
+	int ldap_sizelimit=1000;
 	LDAP* ld=NULL;
 	LDAPMessage* msg=NULL;
 	LDAPMessage* entry=NULL;
@@ -245,6 +246,12 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 	if (debug) syslog(LOG_DEBUG,"ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &ldap_version)\n");
 	if( ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &ldap_version) != LDAP_OPT_SUCCESS ) {
 		syslog(LOG_ERR,"Error setting LDAPv3\n");
+		return 0;
+	}
+
+	if (debug) syslog(LOG_DEBUG,"ldap_set_option(ld, LDAP_OPT_SIZELIMIT, &ldap_sizelimit)\n");
+	if( ldap_set_option(ld, LDAP_OPT_SIZELIMIT, &ldap_sizelimit) != LDAP_OPT_SUCCESS ) {
+		syslog(LOG_ERR,"Error setting LDAP sizelimit\n");
 		return 0;
 	}
 
