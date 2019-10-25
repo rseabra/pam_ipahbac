@@ -9,7 +9,7 @@ Solaris has just one, for allowed hosts.
 
 Both are unmaintanable messes per user, not the elegancy of FreeIPA's HBAC controls, they both _miss_ the concept of flexible control of user access to hosts and services.
 
-This is just a simple PAM module that aims to implement FreeIPA's HBAC for systems that don't support it, like AIX and Solaris, or for systems that want to support it without a full FreeIPA client stack.
+This is just a simple PAM module that aims to implement FreeIPA's HBAC for systems that don't support it, like [AIX](https://github.com/rseabra/pam_ipahbac/wiki/AIX) and Solaris, or for systems that want to support it without a full FreeIPA client stack.
 
 The logo is a play with the concept of _plugging in the missing piece_.
 
@@ -21,7 +21,7 @@ To build, either use the build scripts or use these commands:
 	make
 	sudo make install
 
-Building in AIX is a very long story, I'll be adding the rpm SPEC but one basically needs to build a lot of dependencies before it may work, the usual source of RPMS for AIX doesn't do them well enough.
+Building in AIX is a very long story, [checkout the rpm SPEC](https://github.com/rseabra/pam_ipahbac/releases/download/0.0.7/pam_ipahbac.spec). One used to need to build a lot of dependencies before it could work, but the usual source of RPMS for AIX seems to have had some recent love fixing most of the issues.
 
 **Testing**
 
