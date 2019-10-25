@@ -37,20 +37,21 @@ Options
 * `-d level` is optional, the debug level (use a value greater than zero, although currently only has one debug level)
 * `-D domain` is optional, and used to create the FQDN if the hostname is the short version (eg, a.b.c).
 * `-b BASE` is mandatory, the IPA domain base (eg dc=a,dc=b,dc=c)
-* `-u USER` is mandatory, an IPA sysaccount but only the uid value is needed, the rest is derived from the base
+* `-u USER` **or** `-U USER` is mandatory, the first form derives to an IPA **sysaccount** while the second one to a normal user, thus only the uid value is needed, the rest is derived from the base
 * `-p PASS` or `-P path` is mandatory, as you'll need the sysaccount's password. The second form reads the whole first line of bytes as the password, including newline if present
 * `-l LDAPSERVERS` is mandatory, and comprised of a comma separated list of LDAP servers. Use URI's in GNU/Linux and AIX, **host:port in Solaris**. TLS is **expected and required**.
-* `-k path` is mandatory **in Solaris**; it's the path to the NSSDB that OpenLDAP is using.
-* `-x path` is an optional file with a line separated list of users who will be immediately accepted (useful for root and application accounts).
+* `-k path` is mandatory in **Solaris and AIX**; it's the path to the NSSDB that OpenLDAP (or gskit with IDSLDAP in AIX) is using.
+* `-K path` is optional in **AIX** (if you use password stash with the keydb) and not really needed in Solaris; it's the path to a file containing only (no new line) the password to open the gskit kdb
+* `-x path` is an optional file with a line separated list of users who will be immediately accepted (useful for root and functional accounts).
 
 Status
 ------
 
 | OS  | Status | Observations |
 | --- |:------:| ------------ |
-| Fedora 23 | Done | |
+| Fedora 23 | Done | Just for fun, not really needed on modern IPA-ready native systems |
 | Solaris 11.3 | Done | Remember to compile in 64 and 32 bits... |
-| AIX 6.1/7.1 | Works | Still being tested. Compiles and validates when tested with SSH and the test program. I decided to not care about IDSLDAP and just use OpenLDAP, which is sort of a requirement for sudo with LDAP support anyway, so it will be there for sure |
+| 7.1 TL5SP4 | Done | Remember to compile in 64 and 32 bits... |
 
 Resources
 =========
