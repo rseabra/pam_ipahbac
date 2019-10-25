@@ -2,7 +2,7 @@
 AC_COPYRIGHT([
 See the included file: COPYING for copyright information.
 ])
-AC_INIT([pam_ipahbac], [0.0.6], [rms@1407.org],
+AC_INIT([pam_ipahbac], [0.0.7], [rms@1407.org],
         [pam_ipahbac], [https://github.com/rseabra/pam_ipahbac/])
 # Force autoconf to be at least this version number:
 AC_PREREQ([2.68])
@@ -26,7 +26,16 @@ AM_PROG_LIBTOOL
 
 # Checks for libraries.
 AC_CHECK_LIB(pam, pam_start)
-AC_SEARCH_LIBS([ldap_init], ["ldap" "ldap -llber" "ldap -llber -lssl -lcrypto" ], [ LDAP_LIBS="$ac_res" ], AC_MSG_ERROR([Unable to find OpenLDAP libs]))
+
+case "$host_os" in
+        *aix*)
+		echo "checking for ldap_init in AIX: LDAP Libraries must be provided by aix rpm spec"
+		LDAP_LIBS=""
+	;;
+	*)
+		AC_SEARCH_LIBS([ldap_init], ["ldap" "ldap -llber" "ldap -llber -lssl -lcrypto" ], [ LDAP_LIBS="$ac_res" ], AC_MSG_ERROR([Unable to find OpenLDAP libs]))
+	;;
+esac
 LIBS="${_LIBS} ${LDAP_LIBS}"
 
 # Checks for header files.
@@ -69,7 +78,7 @@ case "$host_os" in
 	;;
 	*aix*)
 		AC_SUBST(pammisc,[])
-		AC_DEFINE([AIX_BUILD], [1], [Whether to build against Solaris])
+		AC_DEFINE([AIX_BUILD], [1], [Whether to build against AIX])
 
 		AC_SUBST(WARNINGS,[""])
 	;;

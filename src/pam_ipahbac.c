@@ -29,6 +29,11 @@
 #include <config.h>
 
 #include <ldap.h>
+#ifdef AIX_BUILD
+#include <ldapssl.h>
+#define LDAP_OPT_SUCCESS LDAP_SUCCESS
+char *keydbpw=NULL;
+#endif
 
 #include "pam_ipahbac.h"
 
@@ -235,13 +240,31 @@ int ipa_check_hbac(char* ldapservers, const char* base, const char* binduser, co
 	LDAPMessage* entry=NULL;
 	char* attr=NULL;
 	BerElement* ber=NULL;
+#ifdef AIX_BUILD
+	int sslerror;
+#endif
 
+#ifdef AIX_BUILD
+	retval = ldap_ssl_client_init(keydb, keydbpw, 0, &sslerror ) ;
+	if(retval != LDAP_OPT_SUCCESS) {
+		syslog(LOG_ERR,"Error initializing ssl client (%d) - %d - %s\n", retval, sslerror, ldap_err2string(sslerror));
+		return 0;
+	}
+
+	if (debug) syslog(LOG_DEBUG,"ldap_ssl_init(%s, 636)\n", ldapservers);
+	ld = ldap_ssl_init(ldapservers, 636, NULL);
+	if(ld == NULL) {
+		syslog(LOG_ERR,"Error initializing LDAP (%s:636)\n", ldapservers);
+		return 0;
+	}
+#else
 	if (debug) syslog(LOG_DEBUG,"ldap_initialize(&ld, ldapservers)\n");
 	retval = ldap_initialize(&ld, ldapservers);
 	if(retval != 0) {
-		syslog(LOG_ERR,"Error initializing LDAP (%d): %s\n", retval, ldapservers);
+		syslog(LOG_ERR,"Error initializing LDAP (%s): %d - %s\n", ldapservers, retval, ldap_err2string(retval));
 		return 0;
 	}
+#endif
 
 	if (debug) syslog(LOG_DEBUG,"ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &ldap_version)\n");
 	if( ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &ldap_version) != LDAP_OPT_SUCCESS ) {
@@ -373,10 +396,13 @@ PAM_EXTERN int pam_sm_acct_mgmt( pam_handle_t *pamh, int flags, int argc, const 
 	FILE* bindpwfile=NULL;
 	char* base=NULL;
 	char* keydb=NULL;
+	FILE* keydbfile=NULL;
 	char* ldapservers=NULL;
 #if defined(SOLARIS_BUILD) || defined(AIX_BUILD)
 	char* username=NULL;
 	char* svcname=NULL;
+	int gotkeydb=0;
+	int gotkeydbpw=0;
 #endif
 #ifdef GNULINUX_BUILD
 	const char* username=NULL;
@@ -384,6 +410,7 @@ PAM_EXTERN int pam_sm_acct_mgmt( pam_handle_t *pamh, int flags, int argc, const 
 #endif
 	char sysaccount[LEN];
 	int gotuser=0;
+	int normal_user=0;
 	int gotpass=0;
 	int gotbase=0;
 	int gotservers=0;
@@ -416,13 +443,15 @@ PAM_EXTERN int pam_sm_acct_mgmt( pam_handle_t *pamh, int flags, int argc, const 
 	if (debug) syslog(LOG_DEBUG, "got host %s\n", thishost);
 
 	optind=0;
-	while( (opt = getopt(argc, (char * const*)argv, "d:k:u:p:P:b:l:x:D:") ) != -1 ) {
+	while( (opt = getopt(argc, (char * const*)argv, "d:k:K:U:u:p:P:b:l:x:D:") ) != -1 ) {
 		if (debug) syslog(LOG_DEBUG, "while cycle for opt %c\n", opt);
 		switch(opt) {
 			case 'd':
 				if (debug) syslog(LOG_DEBUG, "debug enabled\n");
 				debug=1;
 				break;
+			case 'U':
+				normal_user=1;
 			case 'u':
 				if (debug) syslog(LOG_DEBUG, "parsing bind user\n");
 				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
@@ -488,8 +517,47 @@ PAM_EXTERN int pam_sm_acct_mgmt( pam_handle_t *pamh, int flags, int argc, const 
 					if (debug) syslog(LOG_DEBUG,"Error reading ldapservers %s: %s\n", optarg, strerror(errno));
 					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
 				}
+#ifdef AIX_BUILD
+				int i;
+				for(i=0;ldapservers[i] != NULL; i++) if ( ldapservers[i] == ',' ) ldapservers[i]=' ';
+#endif
 				if (debug) syslog(LOG_DEBUG, "got an ldap serverlist: [ %s ]\n", ldapservers);
 				gotservers=1;
+				break;
+			case 'k':
+				if (debug) syslog(LOG_DEBUG, "parsing keydb file path\n");
+				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
+				keydb=strndup(optarg, LEN-1);
+				if(!keydb) {
+					if (debug) syslog(LOG_DEBUG,"Error keydb file path: %s\n", strerror(errno));
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
+				}
+				if (debug) syslog(LOG_DEBUG, "got a keydb path: [ %s ]\n", keydb);
+				gotkeydb=1;
+				break;
+			case 'K':
+				if (debug) syslog(LOG_DEBUG, "parsing keydb password file\n");
+				if(dangerous_str(optarg)) return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
+				keydbfile=fopen(optarg, "r");
+				if(!keydbfile) {
+					if (debug) syslog(LOG_DEBUG,"Error reading keydb pass from %s: %s\n", optarg, strerror(errno));
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
+				}
+				keydbpw=malloc(LEN);
+				if(!keydbpw) {
+					if (debug) syslog(LOG_DEBUG,"Not enough memory to create bindpw buffer: %s\n", strerror(errno));
+					fclose(keydbfile);
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
+				}
+				memset(keydbpw, 0, LEN);
+				if(!fgets(keydbpw, LEN, keydbfile)) {
+					if (debug) syslog(LOG_DEBUG,"Error reading bindpw from %s: %s\n", optarg, strerror(errno));
+					fclose(keydbfile);
+					return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
+				}
+				fclose(keydbfile);
+				if (debug) syslog(LOG_DEBUG, "got a keydb password from a file\n");
+				gotkeydbpw=1;
 				break;
 			case 'x':
 				if (debug) syslog(LOG_DEBUG, "parsing user check exclusions file\n");
@@ -523,9 +591,16 @@ PAM_EXTERN int pam_sm_acct_mgmt( pam_handle_t *pamh, int flags, int argc, const 
 	}
 
 	if (debug) syslog(LOG_DEBUG, "generating ldap bind dn\n", fqdn);
-	if( 0 > snprintf(sysaccount, LEN-1, "uid=%s,cn=sysaccounts,cn=etc,%s", binduser, base) ) {
-		syslog(LOG_ERR,"ERROR: failure defining the sysaccount for %s in %s\n", binduser, base);
-		return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
+	if(normal_user) {
+		if( 0 > snprintf(sysaccount, LEN-1, "uid=%s,cn=users,cn=accounts,%s", binduser, base) ) {
+			syslog(LOG_ERR,"ERROR: failure defining the sysaccount for %s in %s\n", binduser, base);
+			return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
+		}
+	} else {
+		if( 0 > snprintf(sysaccount, LEN-1, "uid=%s,cn=sysaccounts,cn=etc,%s", binduser, base) ) {
+			syslog(LOG_ERR,"ERROR: failure defining the sysaccount for %s in %s\n", binduser, base);
+			return free_and_return(PAM_PERM_DENIED, binduser, bindpw, fqdn, domain, base, ldapservers, keydb);
+		}
 	}
 	syslog(LOG_DEBUG, "bind dn: %s\n", sysaccount);
 
