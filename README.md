@@ -44,14 +44,23 @@ Options
 * `-K path` is optional in **AIX** (if you use password stash with the keydb) and not really needed in Solaris; it's the path to a file containing only (no new line) the password to open the gskit kdb
 * `-x path` is an optional file with a line separated list of users who will be immediately accepted (useful for root and functional accounts).
 
+**Note**: since I was meeting instability processing the options with AIX's getopt, I had to move them into a file.
+
+Just use the options above in a file (eg `/etc/ipahbac.conf`) one per line, such as:
+```
+-d
+-D dc=example,dc=com
+...
+```
+
 Status
 ------
 
 | OS  | Status | Observations |
 | --- |:------:| ------------ |
-| Fedora 23 | Done | Just for fun, not really needed on modern IPA-ready native systems |
-| Solaris 11.3 | Done | Remember to compile in 64 and 32 bits... |
-| 7.1 TL5SP4 | Done | Remember to compile in 64 and 32 bits... |
+| Fedora 23 | Done | Just for fun, not really needed on modern IPA-ready native systems. **And never tested again**! :) |
+| Solaris 11.3 | Done | No longer supported as I don't have neither servers nor time to test! |
+| 7.1 | Done | Should work properly since AIX 7.1, but have only tested in 7.2 and 7.3 with IBM IDS ldap client. Remember to compile in 64 and 32 bits... check the RPM spec for further compile instructions with Xlc |
 
 Resources
 =========
