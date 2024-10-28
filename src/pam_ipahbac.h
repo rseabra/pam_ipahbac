@@ -4,5 +4,6 @@
 int debug = 0;
 
 # define LEN 256
+# define MAX_DEPTH 10
 
 #endif
